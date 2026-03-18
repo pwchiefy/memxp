@@ -191,21 +191,29 @@ impl<'a> CredentialStore<'a> {
 
     /// Get a bundle of credentials by prefix.
     /// Values are included only when `include_values` is true.
-    /// Uses best-effort keychain resolution — one missing entry doesn't block the bundle.
+    ///
+    /// Returns `(entries, unresolved_paths)` — entries have keychain values resolved
+    /// where possible; unresolved_paths lists entries whose keychain values could not
+    /// be retrieved (so the caller can warn).
     pub fn recall_bundle(
         &self,
         prefix: &str,
         include_values: bool,
-    ) -> DbResult<Vec<VaultEntry>> {
+    ) -> DbResult<(Vec<VaultEntry>, Vec<String>)> {
         let mut entries = self.db.list_entries(None, None, Some(prefix))?;
+        let mut unresolved: Vec<String> = Vec::new();
         if include_values {
             for entry in entries.iter_mut() {
-                let _ = self.resolve_value(entry); // best-effort per-entry
+                if (entry.storage_mode == "keychain" || entry.storage_mode == "both")
+                    && self.resolve_value(entry).is_err()
+                {
+                    unresolved.push(entry.path.clone());
+                }
             }
         } else {
             strip_values(&mut entries);
         }
-        Ok(entries)
+        Ok((entries, unresolved))
     }
 
     /// List recent credentials ordered by updated_at DESC. Values are stripped.
@@ -230,30 +238,37 @@ impl<'a> CredentialStore<'a> {
 
     /// List entries with value hashes instead of plaintext values.
     /// Used by vault_changes which needs hash + length but not the actual value.
-    /// Best-effort keychain resolution ensures accurate hashes for keychain entries.
+    ///
+    /// Returns `(hashed_entries, unresolved_paths)` — unresolved_paths lists entries
+    /// whose keychain values could not be retrieved (hashes for those entries will be
+    /// based on the empty DB placeholder).
     pub fn list_with_hashes(
         &self,
         service: Option<&str>,
         category: Option<&str>,
         prefix: Option<&str>,
-    ) -> DbResult<Vec<HashedEntry>> {
+    ) -> DbResult<(Vec<HashedEntry>, Vec<String>)> {
         let entries = self.db.list_entries(service, category, prefix)?;
-        Ok(entries
-            .into_iter()
-            .map(|mut e| {
-                let _ = self.resolve_value(&mut e); // best-effort for accurate hash
-                let value_hash = crate::crypto::value_hash(&e.value);
-                let value_length = e.value.len();
-                HashedEntry {
-                    entry: VaultEntry {
-                        value: String::new(),
-                        ..e
-                    },
-                    value_hash,
-                    value_length,
-                }
-            })
-            .collect())
+        let mut hashed = Vec::with_capacity(entries.len());
+        let mut unresolved: Vec<String> = Vec::new();
+        for mut e in entries {
+            if (e.storage_mode == "keychain" || e.storage_mode == "both")
+                && self.resolve_value(&mut e).is_err()
+            {
+                unresolved.push(e.path.clone());
+            }
+            let value_hash = crate::crypto::value_hash(&e.value);
+            let value_length = e.value.len();
+            hashed.push(HashedEntry {
+                entry: VaultEntry {
+                    value: String::new(),
+                    ..e
+                },
+                value_hash,
+                value_length,
+            });
+        }
+        Ok((hashed, unresolved))
     }
 
     /// Export all credentials with plaintext values for backup purposes.
@@ -574,15 +589,17 @@ mod tests {
             .unwrap();
 
         // Without values
-        let no_vals = store.recall_bundle("aws/", false).unwrap();
+        let (no_vals, unresolved) = store.recall_bundle("aws/", false).unwrap();
         assert_eq!(no_vals.len(), 2);
+        assert!(unresolved.is_empty());
         for e in &no_vals {
             assert!(e.value.is_empty());
         }
 
         // With values
-        let with_vals = store.recall_bundle("aws/", true).unwrap();
+        let (with_vals, unresolved) = store.recall_bundle("aws/", true).unwrap();
         assert_eq!(with_vals.len(), 2);
+        assert!(unresolved.is_empty());
         assert!(!with_vals[0].value.is_empty());
     }
 
@@ -609,8 +626,9 @@ mod tests {
             )
             .unwrap();
 
-        let hashed = store.list_with_hashes(None, None, None).unwrap();
+        let (hashed, unresolved) = store.list_with_hashes(None, None, None).unwrap();
         assert_eq!(hashed.len(), 1);
+        assert!(unresolved.is_empty());
         assert!(hashed[0].entry.value.is_empty(), "value must be stripped");
         assert!(!hashed[0].value_hash.is_empty(), "hash must be present");
         assert_eq!(hashed[0].value_length, "my-secret-value".len());
@@ -707,16 +725,211 @@ mod tests {
             .unwrap();
 
         // With values — vault-mode entries should have their values intact
-        let with_vals = store.recall_bundle("svc/", true).unwrap();
+        let (with_vals, unresolved) = store.recall_bundle("svc/", true).unwrap();
         assert_eq!(with_vals.len(), 2);
+        assert!(unresolved.is_empty());
         for e in &with_vals {
             assert!(!e.value.is_empty(), "vault-mode values should be present");
         }
 
         // Without values — values should be stripped
-        let no_vals = store.recall_bundle("svc/", false).unwrap();
+        let (no_vals, unresolved) = store.recall_bundle("svc/", false).unwrap();
+        assert!(unresolved.is_empty());
         for e in &no_vals {
             assert!(e.value.is_empty(), "values should be stripped");
         }
+    }
+
+    // =========================================================================
+    // Keychain / Both Mode Tests
+    // =========================================================================
+    //
+    // These tests exercise real OS keychain operations. They are ignored on
+    // non-macOS platforms (CI Linux runners, etc.) and use a dedicated prefix
+    // to avoid collisions with real vault data.
+
+    /// Run a test closure with automatic keychain cleanup on success or panic.
+    fn with_keychain_cleanup<F: FnOnce() + std::panic::UnwindSafe>(paths: &[&str], f: F) {
+        let result = std::panic::catch_unwind(f);
+        for path in paths {
+            let _ = delete_from_keyring(path);
+        }
+        if let Err(e) = result {
+            std::panic::resume_unwind(e);
+        }
+    }
+
+    #[test]
+    #[cfg_attr(not(target_os = "macos"), ignore)]
+    fn test_remember_recall_keychain_mode() {
+        let path = "vault-core-test/cs/kc1";
+        with_keychain_cleanup(&[path], || {
+            let tmp = TempDir::new().unwrap();
+            let db = test_db(&tmp);
+            let store = CredentialStore::new(&db);
+
+            let entry = store
+                .remember(path, "kc-secret", None, None, None, None, None, None,
+                    Some("keychain"), None, None, None)
+                .unwrap();
+            assert_eq!(entry.value, "kc-secret");
+
+            // recall() should return the keychain value
+            let recalled = store.recall(path).unwrap().unwrap();
+            assert_eq!(recalled.value, "kc-secret");
+
+            // DB should have empty placeholder
+            let db_entry = db.get_entry(path).unwrap().unwrap();
+            assert!(db_entry.value.is_empty(), "DB should have empty placeholder for keychain mode");
+            assert_eq!(db_entry.storage_mode, "keychain");
+        });
+    }
+
+    #[test]
+    #[cfg_attr(not(target_os = "macos"), ignore)]
+    fn test_remember_recall_both_mode() {
+        let path = "vault-core-test/cs/both1";
+        with_keychain_cleanup(&[path], || {
+            let tmp = TempDir::new().unwrap();
+            let db = test_db(&tmp);
+            let store = CredentialStore::new(&db);
+
+            store
+                .remember(path, "both-secret", None, None, None, None, None, None,
+                    Some("both"), None, None, None)
+                .unwrap();
+
+            // recall() returns the value
+            let recalled = store.recall(path).unwrap().unwrap();
+            assert_eq!(recalled.value, "both-secret");
+
+            // Both keyring and DB should have the value
+            let kv = get_from_keyring(path).unwrap();
+            assert_eq!(kv, Some("both-secret".to_string()));
+
+            let db_entry = db.get_entry(path).unwrap().unwrap();
+            assert_eq!(db_entry.value, "both-secret");
+            assert_eq!(db_entry.storage_mode, "both");
+        });
+    }
+
+    #[test]
+    #[cfg_attr(not(target_os = "macos"), ignore)]
+    fn test_recall_keychain_missing_returns_error() {
+        let path = "vault-core-test/cs/missing1";
+        // Ensure keychain is clean before the test
+        let _ = delete_from_keyring(path);
+
+        let tmp = TempDir::new().unwrap();
+        let db = test_db(&tmp);
+        let store = CredentialStore::new(&db);
+
+        // Insert via raw DB with storage_mode="keychain" but no keychain write
+        db.set_entry(path, "", None, None, None, None, None, None,
+            Some("keychain"), None, None, None)
+            .unwrap();
+
+        // recall() should return Err because keychain entry is missing
+        let result = store.recall(path);
+        assert!(result.is_err(), "recall should fail when keychain entry is missing");
+    }
+
+    #[test]
+    #[cfg_attr(not(target_os = "macos"), ignore)]
+    fn test_recall_bundle_mixed_modes_partial_failure() {
+        let paths = [
+            "vault-core-test/cs/mix/a",
+            "vault-core-test/cs/mix/b",
+            "vault-core-test/cs/mix/c",
+        ];
+        // Clean up keychain before test
+        for p in &paths {
+            let _ = delete_from_keyring(p);
+        }
+
+        with_keychain_cleanup(&paths, || {
+            let tmp = TempDir::new().unwrap();
+            let db = test_db(&tmp);
+            let store = CredentialStore::new(&db);
+
+            // mix/a: vault mode (normal)
+            store
+                .remember(paths[0], "val-a", None, None, None, None, None, None,
+                    None, None, None, None)
+                .unwrap();
+
+            // mix/b: keychain mode via store.remember (writes to keychain)
+            store
+                .remember(paths[1], "val-b", None, None, None, None, None, None,
+                    Some("keychain"), None, None, None)
+                .unwrap();
+
+            // mix/c: keychain mode via raw DB only (no keychain write — simulates missing)
+            db.set_entry(paths[2], "", None, None, None, None, None, None,
+                Some("keychain"), None, None, None)
+                .unwrap();
+
+            let (entries, unresolved) = store
+                .recall_bundle("vault-core-test/cs/mix/", true)
+                .unwrap();
+
+            assert_eq!(entries.len(), 3);
+            assert_eq!(unresolved.len(), 1);
+            assert_eq!(unresolved[0], paths[2]);
+
+            // Verify resolved values
+            let a = entries.iter().find(|e| e.path == paths[0]).unwrap();
+            assert_eq!(a.value, "val-a");
+
+            let b = entries.iter().find(|e| e.path == paths[1]).unwrap();
+            assert_eq!(b.value, "val-b");
+        });
+    }
+
+    #[test]
+    #[cfg_attr(not(target_os = "macos"), ignore)]
+    fn test_export_all_with_keychain_entries() {
+        let path = "vault-core-test/cs/export1";
+        with_keychain_cleanup(&[path], || {
+            let tmp = TempDir::new().unwrap();
+            let db = test_db(&tmp);
+            let store = CredentialStore::new(&db);
+
+            store
+                .remember(path, "export-kc-val", None, None, None, None, None, None,
+                    Some("keychain"), None, None, None)
+                .unwrap();
+
+            let (exported, unresolved) = store.export_all().unwrap();
+            assert!(unresolved.is_empty(), "keychain entry should be resolved");
+
+            let entry = exported.iter().find(|e| e.path == path).unwrap();
+            assert_eq!(entry.value, "export-kc-val");
+        });
+    }
+
+    #[test]
+    #[cfg_attr(not(target_os = "macos"), ignore)]
+    fn test_forget_keychain_mode_cleans_keychain() {
+        let path = "vault-core-test/cs/forget1";
+        with_keychain_cleanup(&[path], || {
+            let tmp = TempDir::new().unwrap();
+            let db = test_db(&tmp);
+            let store = CredentialStore::new(&db);
+
+            store
+                .remember(path, "forget-me", None, None, None, None, None, None,
+                    Some("keychain"), None, None, None)
+                .unwrap();
+
+            // Keychain should have the value
+            assert!(get_from_keyring(path).unwrap().is_some());
+
+            // forget() should clean both DB and keychain
+            assert!(store.forget(path).unwrap());
+
+            assert!(get_from_keyring(path).unwrap().is_none());
+            assert!(store.recall(path).unwrap().is_none());
+        });
     }
 }

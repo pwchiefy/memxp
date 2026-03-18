@@ -19,10 +19,10 @@ pub fn vault_changes(
     _action: Option<&str>,
     limit: i32,
 ) -> CallToolResult {
-    let hashed_entries = state
+    let (hashed_entries, unresolved) = state
         .credentials()
         .list_with_hashes(None, None, prefix)
-        .unwrap_or_default();
+        .unwrap_or_else(|_| (Vec::new(), Vec::new()));
 
     let mut changes: Vec<serde_json::Value> = Vec::new();
     for he in &hashed_entries {
@@ -43,10 +43,14 @@ pub fn vault_changes(
 
     changes.truncate(limit as usize);
 
-    let result = serde_json::json!({
+    let mut result = serde_json::json!({
         "count": changes.len(),
         "changes": changes,
     });
+
+    if !unresolved.is_empty() {
+        result["unresolved_keychain_paths"] = serde_json::json!(unresolved);
+    }
 
     state.log_audit("changes", None, None);
     ok_json(build_response(result))

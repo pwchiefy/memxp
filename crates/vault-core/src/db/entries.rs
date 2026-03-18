@@ -85,6 +85,8 @@ impl CrSqliteDatabase {
         })
     }
 
+    #[doc(hidden)]
+    /// Internal: prefer CredentialStore methods. Exposed for migration/testing only.
     pub fn get_entry(&self, path: &str) -> DbResult<Option<VaultEntry>> {
         let mut stmt = self
             .conn
@@ -105,6 +107,8 @@ impl CrSqliteDatabase {
         Ok(count > 0)
     }
 
+    #[doc(hidden)]
+    /// Internal: prefer CredentialStore methods. Exposed for migration/testing only.
     pub fn list_entries(
         &self,
         service: Option<&str>,
@@ -140,6 +144,8 @@ impl CrSqliteDatabase {
         Ok(entries)
     }
 
+    #[doc(hidden)]
+    /// Internal: prefer CredentialStore methods. Exposed for migration/testing only.
     pub fn search_entries(&self, query: &str, limit: i32) -> DbResult<Vec<VaultEntry>> {
         let pattern = format!("%{query}%");
         let mut stmt = self.conn.prepare(

@@ -157,7 +157,7 @@ pub fn vault_smart_get(
 ) -> CallToolResult {
     // smart_get uses DB metadata for ranking (path, service, tags, notes — not value),
     // then resolves actual values only for the top matches via CredentialStore.
-    let entries = state.db.list_entries(None, None, None).unwrap_or_default();
+    let entries = state.credentials().list(None, None, None).unwrap_or_default();
     let security = security_config();
     let clipboard_clear_seconds = security.clipboard_clear_seconds as u64;
     let force_redact = security.redact_secrets_in_responses;
@@ -173,9 +173,12 @@ pub fn vault_smart_get(
 
     // Resolve actual values for ranked matches (at most MAX_SMART_GET_WITH_VALUES=5)
     // This ensures keychain entries get their real values instead of empty DB placeholders.
+    let mut unresolved: Vec<String> = Vec::new();
     for search_match in &mut ranked {
-        if let Ok(Some(resolved)) = state.credentials().recall(&search_match.entry.path) {
-            search_match.entry.value = resolved.value;
+        match state.credentials().recall(&search_match.entry.path) {
+            Ok(Some(resolved)) => search_match.entry.value = resolved.value,
+            Ok(None) => {}
+            Err(_) => unresolved.push(search_match.entry.path.clone()),
         }
     }
 
@@ -211,11 +214,15 @@ pub fn vault_smart_get(
         matches.push(m);
     }
 
-    let result = serde_json::json!({
+    let mut result = serde_json::json!({
         "query": query,
         "count": matches.len(),
         "matches": matches,
     });
+
+    if !unresolved.is_empty() {
+        result["unresolved_keychain_paths"] = serde_json::json!(unresolved);
+    }
 
     state.log_audit("smart_get", None, None);
     ok_json(build_response(result))
@@ -481,10 +488,10 @@ pub fn vault_get_bundle(
         }));
     }
 
-    let entries = state
+    let (entries, unresolved) = state
         .credentials()
         .recall_bundle(prefix, include_plaintext_values)
-        .unwrap_or_default();
+        .unwrap_or_else(|_| (Vec::new(), Vec::new()));
 
     // Cap the number of entries returned with plaintext values
     let capped = if include_plaintext_values && entries.len() > MAX_BUNDLE_WITH_VALUES {
@@ -503,7 +510,7 @@ pub fn vault_get_bundle(
         &entries[..]
     };
 
-    let result = serde_json::json!({
+    let mut result = serde_json::json!({
         "prefix": prefix,
         "count": capped.len(),
         "total_matching": entries.len(),
@@ -513,6 +520,10 @@ pub fn vault_get_bundle(
         "redacted_by_policy": include_values && !include_plaintext_values,
         "entries": capped.iter().map(|e| entry_to_json(e, include_plaintext_values)).collect::<Vec<_>>(),
     });
+
+    if !unresolved.is_empty() {
+        result["unresolved_keychain_paths"] = serde_json::json!(unresolved);
+    }
 
     ok_json(build_response(result))
 }

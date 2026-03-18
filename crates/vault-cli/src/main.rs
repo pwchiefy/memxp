@@ -8,7 +8,7 @@ mod commands;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "memxp", about = "memxp — persistent memory for AI agents")]
+#[command(name = "memxp", about = "memxp — a second brain for your coding agent")]
 #[command(version, propagate_version = true)]
 struct Cli {
     /// Suppress non-essential output where supported.

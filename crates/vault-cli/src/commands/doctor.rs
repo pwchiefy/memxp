@@ -39,10 +39,11 @@ pub fn doctor() -> anyhow::Result<()> {
             Err(e) => {
                 let msg = e.to_string();
                 if msg.contains("not a database") || msg.contains("decrypt") {
-                    issues.push(format!(
+                    issues.push(
                         "Vault exists but can't be opened (wrong passphrase?)\n\
-                         Fix: check that ~/.vaultp2p/env contains the correct VAULT_PASSPHRASE"
-                    ));
+                         Fix: check that ~/.memxp/env contains the correct VAULT_PASSPHRASE"
+                            .to_string(),
+                    );
                 } else {
                     issues.push(format!("Vault error: {msg}"));
                 }
@@ -65,7 +66,7 @@ pub fn doctor() -> anyhow::Result<()> {
         } else {
             issues.push(
                 "Passphrase file exists but VAULT_PASSPHRASE not set\n\
-                 Fix: add VAULT_PASSPHRASE=\"your-passphrase\" to ~/.vaultp2p/env"
+                 Fix: add VAULT_PASSPHRASE=\"your-passphrase\" to ~/.memxp/env"
                     .to_string(),
             );
         }
@@ -82,7 +83,7 @@ pub fn doctor() -> anyhow::Result<()> {
                 _ => {
                     issues.push(
                         "No passphrase found (env file, environment variable, or keychain)\n\
-                         Fix: create ~/.vaultp2p/env with VAULT_PASSPHRASE=\"your-passphrase\""
+                         Fix: create ~/.memxp/env with VAULT_PASSPHRASE=\"your-passphrase\""
                             .to_string(),
                     );
                 }
@@ -97,7 +98,7 @@ pub fn doctor() -> anyhow::Result<()> {
     } else {
         issues.push(format!(
             "cr-sqlite extension missing at {}\n\
-             Fix: reinstall memxp or copy crsqlite.dylib to ~/.vaultp2p/",
+             Fix: reinstall memxp or copy crsqlite.dylib to ~/.memxp/",
             ext_path.display()
         ));
     }
@@ -215,10 +216,12 @@ pub fn doctor() -> anyhow::Result<()> {
 /// Try to open the database and count entries/guides.
 fn try_open_db() -> anyhow::Result<(usize, usize)> {
     use super::init::open_db;
+    use vault_core::credential_store::CredentialStore;
 
     let db = open_db()?;
+    let store = CredentialStore::new(&db);
 
-    let entries = db.list_entries(None, None, None).unwrap_or_default();
+    let entries = store.list(None, None, None).unwrap_or_default();
     let guides = db.list_guides(None, None).unwrap_or_default();
     Ok((entries.len(), guides.len()))
 }
@@ -260,12 +263,10 @@ fn check_mcp_registration() -> bool {
         home_dir().map(|h| h.join(".claude/settings.local.json")),
     ];
 
-    for path_opt in &settings_paths {
-        if let Some(path) = path_opt {
-            if let Ok(content) = std::fs::read_to_string(path) {
-                if content.contains("\"memxp\"") && content.contains("mcp") {
-                    return true;
-                }
+    for path in settings_paths.iter().flatten() {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            if content.contains("\"memxp\"") && content.contains("mcp") {
+                return true;
             }
         }
     }

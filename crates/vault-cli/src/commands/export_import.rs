@@ -1,11 +1,14 @@
 //! Export/import commands.
 
+use vault_core::credential_store::CredentialStore;
+
 use super::init::open_db;
 
 /// `memxp export [-o <file>]`
 pub fn export(output: Option<&str>) -> anyhow::Result<()> {
     let db = open_db()?;
-    let entries = db.list_entries(None, None, None)?;
+    let store = CredentialStore::new(&db);
+    let (entries, unresolved) = store.export_all()?;
     let guides = db.list_guides(None, None)?;
 
     let version = db.db_version()?;
@@ -63,12 +66,23 @@ pub fn export(output: Option<&str>) -> anyhow::Result<()> {
         println!("{json}");
     }
 
+    if !unresolved.is_empty() {
+        eprintln!(
+            "WARNING: {} keychain entries could not be exported:",
+            unresolved.len()
+        );
+        for p in &unresolved {
+            eprintln!("  - {p}");
+        }
+    }
+
     Ok(())
 }
 
 /// `memxp import <file>`
 pub fn import(file: &str) -> anyhow::Result<()> {
     let db = open_db()?;
+    let store = CredentialStore::new(&db);
     let content = std::fs::read_to_string(file)?;
     let data: serde_json::Value = serde_json::from_str(&content)?;
 
@@ -81,6 +95,14 @@ pub fn import(file: &str) -> anyhow::Result<()> {
             let value = e.get("value").and_then(|v| v.as_str()).unwrap_or_default();
 
             if path.is_empty() {
+                continue;
+            }
+
+            let storage_mode = e.get("storage_mode").and_then(|v| v.as_str()).unwrap_or("vault");
+            if storage_mode == "keychain" && value.is_empty() {
+                eprintln!(
+                    "SKIP: {path} (keychain entry with empty value — would overwrite real secret)"
+                );
                 continue;
             }
 
@@ -120,7 +142,7 @@ pub fn import(file: &str) -> anyhow::Result<()> {
                 Some(related_apps.as_slice())
             };
 
-            db.set_entry(
+            store.remember(
                 path,
                 value,
                 e.get("category").and_then(|v| v.as_str()),

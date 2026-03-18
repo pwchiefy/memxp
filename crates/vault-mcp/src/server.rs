@@ -41,6 +41,11 @@ pub struct VaultState {
 }
 
 impl VaultState {
+    /// Get a CredentialStore wrapping this state's database.
+    pub fn credentials(&self) -> vault_core::CredentialStore<'_> {
+        vault_core::CredentialStore::new(&self.db)
+    }
+
     /// Log an audit event with simplified API.
     pub fn log_audit(&self, action: &str, path: Option<&str>, details: Option<&str>) {
         let machine_id = vault_core::config::get_local_machine_id();

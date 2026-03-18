@@ -4,7 +4,6 @@
 
 use rmcp::model::{CallToolResult, Content};
 
-use vault_core::crypto;
 use vault_core::lint;
 use vault_core::rotation::get_rotation_alerts;
 use vault_core::security::mask_value;
@@ -20,25 +19,25 @@ pub fn vault_changes(
     _action: Option<&str>,
     limit: i32,
 ) -> CallToolResult {
-    let entries = state
-        .db
-        .list_entries(None, None, prefix)
+    let hashed_entries = state
+        .credentials()
+        .list_with_hashes(None, None, prefix)
         .unwrap_or_default();
 
     let mut changes: Vec<serde_json::Value> = Vec::new();
-    for entry in &entries {
+    for he in &hashed_entries {
         if let Some(p) = path {
-            if entry.path != p {
+            if he.entry.path != p {
                 continue;
             }
         }
 
         changes.push(serde_json::json!({
-            "path": entry.path,
+            "path": he.entry.path,
             "action": "set",
-            "value_hash": crypto::value_hash(&entry.value),
-            "value_length": entry.value.len(),
-            "updated_at": entry.updated_at,
+            "value_hash": he.value_hash,
+            "value_length": he.value_length,
+            "updated_at": he.entry.updated_at,
         }));
     }
 
@@ -54,7 +53,7 @@ pub fn vault_changes(
 }
 
 pub fn vault_impact(state: &VaultState, app: &str) -> CallToolResult {
-    let entries = state.db.list_entries(None, None, None).unwrap_or_default();
+    let entries = state.credentials().list(None, None, None).unwrap_or_default();
 
     let affected: Vec<serde_json::Value> = entries
         .iter()
@@ -87,8 +86,8 @@ pub fn vault_lint(
     include_suggestions: bool,
 ) -> CallToolResult {
     let entries = state
-        .db
-        .list_entries(None, None, prefix)
+        .credentials()
+        .list(None, None, prefix)
         .unwrap_or_default();
     let paths: Vec<String> = entries.iter().map(|e| e.path.clone()).collect();
 
@@ -150,7 +149,7 @@ pub fn vault_rotation_alerts(
     window_days: i32,
     include_overdue: bool,
 ) -> CallToolResult {
-    let entries = state.db.list_rotation_candidates().unwrap_or_default();
+    let entries = state.credentials().list_rotation_candidates().unwrap_or_default();
     let alerts = get_rotation_alerts(&entries, window_days, include_overdue);
 
     let result = serde_json::json!({

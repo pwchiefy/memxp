@@ -29,7 +29,14 @@ REPO_OWNER="pwchiefy"
 REPO_NAME="memxp"
 VERSION="${MEMXP_VERSION:-}"
 INSTALL_DIR="$HOME/.local/bin"
-VAULT_DIR="$HOME/.vaultp2p"
+# Prefer ~/.memxp for new installs; use existing ~/.vaultp2p if present
+if [ -d "$HOME/.memxp" ]; then
+  VAULT_DIR="$HOME/.memxp"
+elif [ -d "$HOME/.vaultp2p" ]; then
+  VAULT_DIR="$HOME/.vaultp2p"
+else
+  VAULT_DIR="$HOME/.memxp"
+fi
 SKIP_CLAUDE=0
 
 # ── Parse arguments ───────────────────────────────────────────
@@ -365,11 +372,11 @@ fi
 
 # Ensure shell profile sources the env file
 if [ -f "$SHELL_PROFILE" ]; then
-  if ! grep -q 'vaultp2p/env' "$SHELL_PROFILE" 2>/dev/null; then
-    printf '\n[ -f ~/.vaultp2p/env ] && . ~/.vaultp2p/env\n' >> "$SHELL_PROFILE"
+  if ! grep -q 'memxp/env' "$SHELL_PROFILE" 2>/dev/null; then
+    printf '\n[ -f ~/.memxp/env ] && . ~/.memxp/env\n' >> "$SHELL_PROFILE"
   fi
 else
-  printf '[ -f ~/.vaultp2p/env ] && . ~/.vaultp2p/env\n' >> "$SHELL_PROFILE"
+  printf '[ -f ~/.memxp/env ] && . ~/.memxp/env\n' >> "$SHELL_PROFILE"
 fi
 
 # Create minimal config if it doesn't exist

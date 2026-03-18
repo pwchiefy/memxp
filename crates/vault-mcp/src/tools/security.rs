@@ -97,7 +97,7 @@ pub fn vault_inject(
         }));
     }
 
-    let entry = state.db.get_entry(path).unwrap_or(None);
+    let entry = state.credentials().recall(path).unwrap_or(None);
     let entry = match entry {
         Some(e) => e,
         None => return ok_json(serde_json::json!({"error": format!("Not found: {path}")})),
@@ -124,7 +124,7 @@ pub fn vault_show_gui(
     copy_to_clipboard: bool,
     auto_clear_seconds: u64,
 ) -> CallToolResult {
-    let entry = state.db.get_entry(path).unwrap_or(None);
+    let entry = state.credentials().recall(path).unwrap_or(None);
     let entry = match entry {
         Some(e) => e,
         None => return ok_json(serde_json::json!({"error": format!("Not found: {path}")})),
@@ -232,7 +232,7 @@ pub fn vault_use(
     }
 
     // Get the credential
-    let entry = state.db.get_entry(path).unwrap_or(None);
+    let entry = state.credentials().recall(path).unwrap_or(None);
     let entry = match entry {
         Some(e) => e,
         None => return ok_json(serde_json::json!({"error": format!("Not found: {path}")})),
@@ -406,7 +406,7 @@ pub fn vault_expand(state: &VaultState, template: &str) -> CallToolResult {
 
     // Process matches in reverse order to preserve indices
     for (start, end, path) in matches.iter().rev() {
-        let entry = state.db.get_entry(path).unwrap_or(None);
+        let entry = state.credentials().recall(path).unwrap_or(None);
         match entry {
             Some(e) => {
                 expanded.replace_range(start..end, &e.value);

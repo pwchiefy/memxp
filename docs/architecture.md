@@ -59,7 +59,7 @@ memxp is a 5-crate Rust workspace (plus an integration test crate) that provides
 
 | Crate | Type | Purpose | Key Types / Traits |
 |-------|------|---------|-------------------|
-| `vault-core` | Library | Database, cryptography, models, authentication, conflict resolution, audit logging, configuration | `CrSqliteDatabase`, `VaultDB`, `VaultEntry`, `VaultGuide`, `SyncChange`, `ConflictQueue`, `AuditLogger`, `ChallengeStore`, `VaultConfig` |
+| `vault-core` | Library | Database, cryptography, models, authentication, conflict resolution, audit logging, configuration | `CrSqliteDatabase`, `CredentialStore`, `VaultEntry`, `VaultGuide`, `SyncChange`, `ConflictQueue`, `AuditLogger`, `ChallengeStore`, `VaultConfig` |
 | `vault-sync` | Library | P2P sync protocol, daemon, session management, wire serialization, capability negotiation | `SyncDaemon`, `DaemonConfig`, `WireFrame`, `MessageType`, `SyncSession`, `PeerCapabilities`, `HelloMessage`, `SyncRequest`, `SyncResponse` |
 | `vault-mcp` | Library | MCP server bridging vault-core to Claude Code and other MCP clients via stdio transport | `VaultMcpServer`, `VaultState`, `SharedState`, tool param structs (`VaultGetParams`, `VaultSetParams`, etc.) |
 | `vault-web` | Library | Localhost web dashboard with REST API, password + TOTP authentication, session management | `AppState`, `AuthState`, `WebConfig`, `build_router()`, `start()` |
@@ -139,7 +139,7 @@ When the cr-sqlite extension is loaded, tables are registered as **Conflict-Free
 
 ### OS Keychain Integration
 
-The `vault_db` module wraps `CrSqliteDatabase` with keychain awareness via the `keyring` crate. Three storage modes are supported:
+The `credential_store` module wraps `CrSqliteDatabase` with keychain awareness via the `keyring` crate and enforces value stripping on bulk reads. All credential access from MCP, CLI, and Web goes through `CredentialStore`. Three storage modes are supported:
 
 | Mode | DB stores | Keychain stores | Sync behavior |
 |------|-----------|-----------------|---------------|
@@ -424,8 +424,9 @@ let passphrase = vault_core::auth::configured_passphrase()?;
 // 2. Open encrypted database
 let db = CrSqliteDatabase::open(&db_path, &passphrase, extension_path.as_deref())?;
 
-// 3. Perform operation
-let entry = db.get_entry("api/openai/key")?;
+// 3. Perform operation via CredentialStore (handles keychain routing + value policy)
+let store = CredentialStore::new(&db);
+let entry = store.recall("api/openai/key")?;
 
 // 4. (Optional) Log audit event
 let audit = AuditLogger::open_default()?;

@@ -1,5 +1,6 @@
 //! Credential management commands: get, set, delete, list, search.
 
+use vault_core::credential_store::CredentialStore;
 use vault_core::security::mask_value;
 
 use super::init::open_db;
@@ -13,8 +14,9 @@ pub fn get(
     clipboard: bool,
 ) -> anyhow::Result<()> {
     let db = open_db()?;
-    let entry = db
-        .get_entry(path)?
+    let store = CredentialStore::new(&db);
+    let entry = store
+        .recall(path)?
         .ok_or_else(|| anyhow::anyhow!("Entry not found: {path}"))?;
     let security =
         vault_core::config::VaultConfig::load(&vault_core::config::config_path()).security;
@@ -124,9 +126,10 @@ pub struct SetOpts<'a> {
 /// `memxp set <path> <value>`
 pub fn set(opts: &SetOpts<'_>) -> anyhow::Result<()> {
     let db = open_db()?;
+    let store = CredentialStore::new(&db);
 
-    let existing = db.get_entry(opts.path)?;
-    if existing.is_some() && !vault_core::operator_session::is_operator_session_active() {
+    let existing = store.exists(opts.path)?;
+    if existing && !vault_core::operator_session::is_operator_session_active() {
         anyhow::bail!(
             "Overwriting existing credential '{}' requires operator mode. Run `memxp operator enable` first.",
             opts.path
@@ -139,7 +142,7 @@ pub fn set(opts: &SetOpts<'_>) -> anyhow::Result<()> {
         Some(opts.tags)
     };
 
-    let entry = db.set_entry(
+    let entry = store.remember(
         opts.path,
         opts.value,
         opts.category,
@@ -173,7 +176,8 @@ pub fn delete(path: &str) -> anyhow::Result<()> {
         );
     }
     let db = open_db()?;
-    let deleted = db.delete_entry(path)?;
+    let store = CredentialStore::new(&db);
+    let deleted = store.forget(path)?;
     if deleted {
         println!("Deleted: {path}");
     } else {
@@ -190,7 +194,8 @@ pub fn list(
     json: bool,
 ) -> anyhow::Result<()> {
     let db = open_db()?;
-    let entries = db.list_entries(service, category, prefix)?;
+    let store = CredentialStore::new(&db);
+    let entries = store.list(service, category, prefix)?;
 
     if json {
         let items: Vec<serde_json::Value> = entries
@@ -230,7 +235,8 @@ pub fn list(
 /// `memxp search <query>`
 pub fn search(query: &str, json: bool) -> anyhow::Result<()> {
     let db = open_db()?;
-    let entries = db.search_entries(query, 20)?;
+    let store = CredentialStore::new(&db);
+    let entries = store.find(query, 20)?;
 
     if json {
         let items: Vec<serde_json::Value> = entries
@@ -270,6 +276,7 @@ pub fn search(query: &str, json: bool) -> anyhow::Result<()> {
 /// `memxp status`
 pub fn status() -> anyhow::Result<()> {
     let db = open_db()?;
+    let store = CredentialStore::new(&db);
 
     let db_path = vault_core::config::db_path();
     let version = db.db_version()?;
@@ -277,7 +284,7 @@ pub fn status() -> anyhow::Result<()> {
     let cr = db.cr_enabled();
     let machine_id = vault_core::config::get_local_machine_id();
 
-    let entries = db.list_entries(None, None, None)?;
+    let entries = store.list(None, None, None)?;
 
     // Count by category
     let mut by_category = std::collections::HashMap::new();

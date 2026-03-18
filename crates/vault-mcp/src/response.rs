@@ -55,10 +55,13 @@ pub fn entry_to_json(entry: &vault_core::VaultEntry, include_value: bool) -> Val
     if include_value {
         map.insert("value".into(), Value::String(entry.value.clone()));
     } else {
-        map.insert(
-            "value_preview".into(),
-            Value::String(mask_value(&entry.value)),
-        );
+        // If value was stripped by CredentialStore, show a generic mask
+        let preview = if entry.value.is_empty() {
+            "****".to_string()
+        } else {
+            mask_value(&entry.value)
+        };
+        map.insert("value_preview".into(), Value::String(preview));
     }
 
     map.insert("category".into(), Value::String(entry.category.clone()));

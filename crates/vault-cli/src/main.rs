@@ -1016,8 +1016,16 @@ fn run_migrate(old_db_path: &str) -> anyhow::Result<()> {
     let ext = commands::init::extension_path();
     let new_db = CrSqliteDatabase::open(&new_path, &passphrase, ext.as_deref())?;
 
-    // Copy entries
+    // Copy entries via CredentialStore for proper keychain routing
+    let store = vault_core::credential_store::CredentialStore::new(&new_db);
     for e in &old_entries {
+        if e.storage_mode == "keychain" && e.value.is_empty() {
+            eprintln!(
+                "  WARNING: skipping keychain entry '{}' (value not in old DB)",
+                e.path
+            );
+            continue;
+        }
         let tags = if e.tags.is_empty() {
             None
         } else {
@@ -1028,7 +1036,7 @@ fn run_migrate(old_db_path: &str) -> anyhow::Result<()> {
         } else {
             Some(e.related_apps.as_slice())
         };
-        new_db.set_entry(
+        store.remember(
             &e.path,
             &e.value,
             Some(&e.category),

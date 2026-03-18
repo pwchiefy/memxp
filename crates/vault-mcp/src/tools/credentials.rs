@@ -31,8 +31,8 @@ pub fn vault_help(topic: Option<&str>) -> CallToolResult {
 
 pub fn vault_discover(state: &VaultState, query: Option<&str>) -> CallToolResult {
     let entries = match query {
-        Some(prefix) => state.db.list_entries(None, None, Some(prefix)),
-        None => state.db.list_entries(None, None, None),
+        Some(prefix) => state.credentials().list(None, None, Some(prefix)),
+        None => state.credentials().list(None, None, None),
     };
     let entries = entries.unwrap_or_default();
 
@@ -60,15 +60,7 @@ pub fn vault_discover(state: &VaultState, query: Option<&str>) -> CallToolResult
 }
 
 pub fn vault_recent(state: &VaultState, limit: i32) -> CallToolResult {
-    let mut entries = state.db.list_entries(None, None, None).unwrap_or_default();
-
-    // Sort by updated_at descending
-    entries.sort_by(|a, b| {
-        let a_ts = a.updated_at.as_deref().unwrap_or("");
-        let b_ts = b.updated_at.as_deref().unwrap_or("");
-        b_ts.cmp(a_ts)
-    });
-    entries.truncate(limit as usize);
+    let entries = state.credentials().recent(limit).unwrap_or_default();
 
     let result = serde_json::json!({
         "count": entries.len(),
@@ -88,7 +80,7 @@ pub fn vault_session_start(
     let conflicts = conflict_queue.get_pending_conflicts().unwrap_or_default();
 
     // Rotation alerts via free function
-    let rotation_entries = state.db.list_rotation_candidates().unwrap_or_default();
+    let rotation_entries = state.credentials().list_rotation_candidates().unwrap_or_default();
     let rotation_alerts = get_rotation_alerts(&rotation_entries, rotation_window_days, true);
 
     let result = serde_json::json!({
@@ -109,8 +101,8 @@ pub fn vault_list(
     _offset: i32,
 ) -> CallToolResult {
     let mut entries = state
-        .db
-        .list_entries(service, category, prefix)
+        .credentials()
+        .list(service, category, prefix)
         .unwrap_or_default();
 
     entries.truncate(limit as usize);
@@ -126,7 +118,7 @@ pub fn vault_list(
 }
 
 pub fn vault_search(state: &VaultState, query: &str) -> CallToolResult {
-    let entries = state.db.search_entries(query, 100).unwrap_or_default();
+    let entries = state.credentials().find(query, 100).unwrap_or_default();
 
     let results: Vec<serde_json::Value> = entries
         .iter()
@@ -163,6 +155,8 @@ pub fn vault_smart_get(
     copy_to_clipboard: bool,
     redact: bool,
 ) -> CallToolResult {
+    // smart_get uses DB metadata for ranking (path, service, tags, notes — not value),
+    // then resolves actual values only for the top matches via CredentialStore.
     let entries = state.db.list_entries(None, None, None).unwrap_or_default();
     let security = security_config();
     let clipboard_clear_seconds = security.clipboard_clear_seconds as u64;
@@ -175,7 +169,15 @@ pub fn vault_smart_get(
         max_candidates as usize
     };
 
-    let ranked = rank_matches(query, &entries, effective_max);
+    let mut ranked = rank_matches(query, &entries, effective_max);
+
+    // Resolve actual values for ranked matches (at most MAX_SMART_GET_WITH_VALUES=5)
+    // This ensures keychain entries get their real values instead of empty DB placeholders.
+    for search_match in &mut ranked {
+        if let Ok(Some(resolved)) = state.credentials().recall(&search_match.entry.path) {
+            search_match.entry.value = resolved.value;
+        }
+    }
 
     let mut matches: Vec<serde_json::Value> = Vec::new();
     for search_match in &ranked {
@@ -227,7 +229,7 @@ pub fn vault_get(
     copy_to_clipboard: bool,
     redact: bool,
 ) -> CallToolResult {
-    let entry = state.db.get_entry(path).unwrap_or(None);
+    let entry = state.credentials().recall(path).unwrap_or(None);
     let entry = match entry {
         Some(e) => e,
         None => return ok_json(serde_json::json!({"error": format!("Not found: {path}")})),
@@ -263,14 +265,24 @@ pub fn vault_get(
 }
 
 pub fn vault_has(state: &VaultState, path: &str) -> CallToolResult {
-    match state.db.get_entry(path) {
-        Ok(Some(entry)) => ok_json(build_response(serde_json::json!({
-            "exists": true,
-            "path": path,
-            "service": entry.service,
-            "category": entry.category,
-        }))),
-        Ok(None) => ok_json(build_response(serde_json::json!({
+    match state.credentials().exists(path) {
+        Ok(true) => {
+            // Recall to get metadata (service, category) without exposing value
+            let entry = state.credentials().recall(path).unwrap_or(None);
+            match entry {
+                Some(e) => ok_json(build_response(serde_json::json!({
+                    "exists": true,
+                    "path": path,
+                    "service": e.service,
+                    "category": e.category,
+                }))),
+                None => ok_json(build_response(serde_json::json!({
+                    "exists": false,
+                    "path": path,
+                }))),
+            }
+        }
+        Ok(false) => ok_json(build_response(serde_json::json!({
             "exists": false,
             "path": path,
         }))),
@@ -298,8 +310,8 @@ pub fn vault_set(
         return ok_json(serde_json::json!({"error": msg}));
     }
 
-    let existing = state.db.get_entry(path).unwrap_or(None);
-    if existing.is_some() && !state.is_operator_active() {
+    let existing = state.credentials().exists(path).unwrap_or(false);
+    if existing && !state.is_operator_active() {
         return ok_json(serde_json::json!({
             "error": format!(
                 "Overwriting existing credential '{path}' requires operator mode. \
@@ -308,7 +320,7 @@ pub fn vault_set(
         }));
     }
 
-    match state.db.set_entry(
+    match state.credentials().remember(
         path,
         value,
         category,
@@ -343,7 +355,7 @@ pub fn vault_delete(state: &VaultState, path: &str) -> CallToolResult {
         return ok_json(serde_json::json!({"error": msg}));
     }
 
-    match state.db.delete_entry(path) {
+    match state.credentials().forget(path) {
         Ok(true) => {
             state.log_audit("delete", Some(path), None);
             ok_json(serde_json::json!({
@@ -413,7 +425,7 @@ pub fn vault_set_batch(state: &VaultState, entries: &[serde_json::Value]) -> Cal
                     .collect()
             });
 
-        match state.db.set_entry(
+        match state.credentials().remember(
             path,
             value,
             category,
@@ -470,8 +482,8 @@ pub fn vault_get_bundle(
     }
 
     let entries = state
-        .db
-        .list_entries(None, None, Some(prefix))
+        .credentials()
+        .recall_bundle(prefix, include_plaintext_values)
         .unwrap_or_default();
 
     // Cap the number of entries returned with plaintext values

@@ -145,8 +145,9 @@ pub fn use_secret(
     }
 
     let db = open_db()?;
-    let entry = db
-        .get_entry(path)?
+    let store = vault_core::credential_store::CredentialStore::new(&db);
+    let entry = store
+        .recall(path)?
         .ok_or_else(|| anyhow::anyhow!("Not found: {path}"))?;
 
     let output = std::process::Command::new(&command[0])
@@ -186,7 +187,7 @@ pub fn use_secret(
 
 fn expand_placeholders(
     input: &str,
-    db: &vault_core::db::CrSqliteDatabase,
+    store: &vault_core::credential_store::CredentialStore<'_>,
 ) -> anyhow::Result<(String, usize)> {
     let mut output = String::with_capacity(input.len());
     let mut cursor = 0usize;
@@ -203,8 +204,8 @@ fn expand_placeholders(
         };
         let end = after_prefix + rel_end;
         let path = &input[after_prefix..end];
-        let entry = db
-            .get_entry(path)?
+        let entry = store
+            .recall(path)?
             .ok_or_else(|| anyhow::anyhow!("Missing placeholder secret: {path}"))?;
         output.push_str(&entry.value);
         replaced += 1;
@@ -221,6 +222,7 @@ pub fn expand(file: Option<&str>, stdin_mode: bool, json: bool) -> anyhow::Resul
         anyhow::bail!("`memxp expand` requires operator mode. Run `memxp operator enable` first.");
     }
     let db = open_db()?;
+    let store = vault_core::credential_store::CredentialStore::new(&db);
     let input = if stdin_mode || file.is_none() {
         let mut buf = String::new();
         std::io::stdin().read_to_string(&mut buf)?;
@@ -229,7 +231,7 @@ pub fn expand(file: Option<&str>, stdin_mode: bool, json: bool) -> anyhow::Resul
         std::fs::read_to_string(file.unwrap_or_default())?
     };
 
-    let (expanded, replaced) = expand_placeholders(&input, &db)?;
+    let (expanded, replaced) = expand_placeholders(&input, &store)?;
     if json {
         println!(
             "{}",

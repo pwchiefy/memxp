@@ -286,14 +286,21 @@ pub async fn credentials_list(
     }
 
     let db = state.db.lock().unwrap();
-    let entries = db.list_entries(None, None, None).unwrap_or_default();
+    let store = vault_core::credential_store::CredentialStore::new(&db);
+    let entries = store.list(None, None, None).unwrap_or_default();
 
     let items: Vec<serde_json::Value> = entries
         .iter()
         .map(|e| {
+            // Values are stripped by CredentialStore — show generic mask
+            let masked = if e.value.is_empty() {
+                "****".to_string()
+            } else {
+                mask_value(&e.value)
+            };
             serde_json::json!({
                 "path": e.path,
-                "value": mask_value(&e.value),
+                "value": masked,
                 "category": e.category,
                 "service": e.service,
             })
@@ -319,7 +326,8 @@ pub async fn credentials_get(
     }
 
     let db = state.db.lock().unwrap();
-    match db.get_entry(&path) {
+    let store = vault_core::credential_store::CredentialStore::new(&db);
+    match store.recall(&path) {
         Ok(Some(entry)) => Json(serde_json::json!({
             "path": entry.path,
             "value": mask_value(&entry.value),
@@ -714,7 +722,8 @@ pub async fn credential_clipboard(
 
     let value = {
         let db = state.db.lock().unwrap();
-        match db.get_entry(&path) {
+        let store = vault_core::credential_store::CredentialStore::new(&db);
+        match store.recall(&path) {
             Ok(Some(entry)) => entry.value.clone(),
             Ok(None) => {
                 return (
@@ -794,8 +803,9 @@ pub async fn events_poll(
     // Get credential and guide counts
     let (credential_count, guide_count) = {
         let db = state.db.lock().unwrap();
-        let creds = db
-            .list_entries(None, None, None)
+        let store = vault_core::credential_store::CredentialStore::new(&db);
+        let creds = store
+            .list(None, None, None)
             .map(|v| v.len())
             .unwrap_or(0);
         let guides = db.list_guides(None, None).map(|v| v.len()).unwrap_or(0);

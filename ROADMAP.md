@@ -1,31 +1,38 @@
-# memxp Public Release Roadmap
+# memxp Roadmap
 
-## 0.1.x Stabilization
+## 0.2.x (Current — Public Beta)
 
-- [ ] Finalize threat model and incident response guide
-- [ ] Add compatibility matrix for sync protocol versions
-- [ ] Add docs for backup and recovery workflows
-- [ ] Add contributor-first issue templates and triage labels
+- [x] Friendly MCP tool names (remember, recall, find, save_instructions)
+- [x] One-command installer with Claude Code setup
+- [x] Developer ID signed macOS binary
+- [x] First-run onboarding (conversational profile setup)
+- [x] Learning journal system (Meditation.md + cleanup skill)
+- [x] `memxp doctor` health check command
+- [x] Public API cleanup (P2P messaging removed from public surface)
+- [x] Release packaging with checksum verification
+- [x] Install + self-update path hardened
+- [ ] Homebrew tap (`brew install memxp`)
+- [ ] Apple notarization for zero-dialog installs
+- [ ] Intel Mac and Linux release binaries
+- [ ] Auto-backup to iCloud/cloud storage for single-device users
 
-## 0.2.x Public-beta readiness
+## 0.3.x
 
-- [ ] Add release signing and SBOM publishing
-- [ ] Add deterministic build workflow
-- [ ] Add public-facing install matrix and usage examples
-- [ ] Define extension points for CI adapters (CI/CD integrations)
-- [x] Public API cleanup (secret sync + messaging removal)
-- [x] Release packaging and checksum-updates flow
-- [x] Public CLI + install/self-update path hardened
+- [ ] Deterministic build workflow
+- [ ] SBOM publishing
+- [ ] Backup and recovery documentation
+- [ ] Sync protocol version compatibility matrix
+- [ ] CI/CD integration extension points
 
 ## 1.0 Candidate
 
 - [ ] API and CLI stability contract
-- [ ] Public launch checklist completed
-- [ ] Final legal/docs audit (LICENSE + SECURITY + CONTRIBUTING)
+- [ ] Final legal/docs audit
 - [ ] Public governance for maintainers and release owners
+- [ ] Cross-platform install matrix verified (Linux, macOS, Windows)
 
 ## Non-goals (initially)
 
-- Replacing commercial secret managers for enterprise scale
+- Replacing commercial secret managers at enterprise scale
 - Becoming a general-purpose deployment orchestrator
 - Building monolithic platform integrations without demand signals

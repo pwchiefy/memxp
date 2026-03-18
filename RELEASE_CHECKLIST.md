@@ -1,31 +1,36 @@
 # Public Release Checklist
 
-## Repo and governance
+## Repo and Governance
 
-- [ ] License file present and legal review complete
-- [ ] README and contributing docs present
-- [ ] CODE_OF_CONDUCT and SECURITY present
-- [ ] Branch protection + maintainer review policy in place
-- [ ] Issue templates and PR template added
+- [x] License file present (MIT)
+- [x] README with install instructions and feature overview
+- [x] CONTRIBUTING.md with development setup
+- [x] CODE_OF_CONDUCT.md and SECURITY.md present
+- [x] Issue templates and PR template added
+- [ ] Branch protection + maintainer review policy
 
-## Product surface
+## Product Surface
 
-- [ ] Security model and threat boundaries documented
-- [ ] Threat model and recovery story documented
-- [ ] CLI quick-start verified on Linux, macOS, Windows
-- [ ] Secret rotation and revocation paths clarified
-- [x] Deterministic install instructions
+- [x] Security model and threat boundaries documented (docs/threat-model.md)
+- [x] CLI quick-start verified on macOS (Apple Silicon)
+- [x] Friendly MCP tool names for non-technical users
+- [x] First-run onboarding guide seeded during install
+- [x] `memxp doctor` health check with fix suggestions
+- [ ] CLI quick-start verified on Linux and Windows
+- [ ] Secret rotation and revocation paths clarified in docs
 
-## Release pipeline
+## Release Pipeline
 
-- [ ] Build pipeline uses pinned dependencies
-- [ ] CI covers formatting, linting, tests (where feasible)
-- [x] Artifact publishing flow validated (GitHub Release workflow)
-- [x] Multi-platform install and checksum verification flow added
-- [ ] Release signing process defined
+- [x] Developer ID signed macOS binary
+- [x] Artifact publishing flow (GitHub Releases)
+- [x] Checksum verification in install script
+- [x] Build-release script with env-var signing identity
+- [ ] CI covers formatting, linting, tests
+- [ ] Pinned dependency audit (cargo-audit)
+- [ ] Apple notarization
 
 ## Community
 
-- [ ] First-pass contributor onboarding done
-- [ ] Public roadmap shared
-- [ ] Community communication channel/issue labeling set
+- [x] Public roadmap shared (ROADMAP.md)
+- [ ] First-pass contributor onboarding guide
+- [ ] Communication channel / issue labeling

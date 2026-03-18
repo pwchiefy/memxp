@@ -1,14 +1,43 @@
 # memxp
 
-**Treat your favorite AI Agent's Amnesia**
+**A second brain for your coding agent.**
 
-One encrypted knowledge base that syncs across every machine. Your agents read it, write to it, and get better over time. Works with Claude Code, Cursor, Codex, Pi, OpenCode -- any tool that speaks MCP. Cli tools as well. 
+Today's coding agents are spiky geniuses with periodic amnesia. memxp fixes that.
+It gives your agent an encrypted, persistent record of what you work on, what works,
+what fails, and how to help -- so every session picks up where the last one left off.
 
-- **Persistent agent memory** -- Guides and runbooks that agents read and improve
-- **Encrypted credential store** -- API keys, tokens, passwords -- zero plaintext
-- **P2P sync** -- Automatic replication across your machines via Tailscale CRDTs
-- **Agent-neutral** -- MCP server + CLI. Any tool, any machine
-- **Single binary** -- CLI, MCP server, sync daemon, and web GUI in one `memxp` binary
+---
+
+## Get Started (2 minutes)
+
+One command installs everything -- memxp, Claude Code (if you don't have it),
+encrypted storage, and the onboarding system. Nothing else to configure.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/pwchiefy/memxp/main/scripts/install.sh | sh
+```
+
+The installer will:
+1. Install **Claude Code** if you don't have it (includes Node.js and Homebrew if needed)
+2. Download and set up **memxp** with encrypted storage
+3. Connect memxp to Claude Code with permissions pre-approved
+4. Create your **project directory** (defaults to ~/Developer)
+5. Set up your **learning journal** so your agent improves over time
+
+After install, open Terminal and run:
+
+```bash
+cd ~/Developer
+claude
+```
+
+Claude will introduce itself, ask a few questions about you and what you work on,
+and from there every session builds on the last. That's it.
+
+> **What can you use it for?** Coding projects, data analysis, personal finance,
+> planning, operations, learning -- anything where you'd benefit from an AI partner
+> that actually remembers your work. Your agent keeps track of what works, what
+> breaks, and how to do things right.
 
 ---
 
@@ -22,12 +51,17 @@ Switch tools and you start over. Your agent asks the same questions every sessio
 
 ### The Solution
 
-memxp is a single encrypted database that replaces scattered config files with a shared knowledge store.
-Agents read guides from it. They write improved guides back. The system gets smarter over time.
-Everything syncs automatically across your machines. 
+memxp is an encrypted knowledge base that replaces scattered config files with a
+shared second brain. Your agent reads from it, writes to it, and gets better over
+time. It keeps a record of what you work on, what works, what fails, and how to
+give each session the best shot at success. Never attempt a task alone again.
 
-And it securely stores your credentials too -- API keys, tokens, passwords -- encrypted at rest,
-synced over mutual TLS, accessible via the same CLI and MCP tools your agents already use.
+- **Second brain** -- Guides, procedures, learnings, and credentials in one place
+- **Gets smarter** -- A learning journal tracks mistakes so they never repeat
+- **Encrypted** -- API keys, tokens, passwords -- AES-256 at rest, zero plaintext
+- **Syncs everywhere** -- Automatic P2P replication across your machines
+- **Works with any agent** -- Claude Code, Cursor, Codex, Pi, OpenCode -- anything that speaks MCP
+- **Single binary** -- CLI, MCP server, sync daemon, and web GUI in one `memxp` binary
 
 ---
 
@@ -69,45 +103,26 @@ depending on your per-path conflict policy.
 
 ---
 
-## Quick Start
+## Developer Setup
 
-### Install
+If you already have Claude Code and want manual control, or if you're
+building from source:
 
-**From GitHub releases (recommended):**
-
-```bash
-# macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/pwchiefy/memxp/main/scripts/install.sh \
-  | sh -s -- --version v0.1.0
-```
-
-```powershell
-# Windows
-iwr -UseBasicParsing -Uri https://raw.githubusercontent.com/pwchiefy/memxp/main/scripts/install.ps1 | iex
-```
-
-**From source:**
+### Install from source
 
 ```bash
 cargo install --git https://github.com/pwchiefy/memxp.git memxp
+memxp init
+memxp doctor   # verify everything works
+
+# Register with Claude Code
+claude mcp add memxp -s user -- memxp mcp
 ```
 
-### Get Started
+### Manual setup (without the installer)
 
 ```bash
-# Initialize your encrypted database
-memxp init
-
-# Verify everything is working
-memxp doctor
-
-# Bootstrap your knowledge base (in Claude Code)
-# Install the /memup skill first:
-cp commands/memup.md ~/.claude/commands/memup.md
-# Then in Claude Code:
-/memup
-
-# Or manually add a guide
+# Add a guide
 memxp guide add deploy-vps \
   --content "# Deploy to VPS\n1. SSH into server..." \
   --category procedure
@@ -115,8 +130,9 @@ memxp guide add deploy-vps \
 # Store a credential
 memxp set openai/api/key "sk-..." --service openai --category api_key
 
-# Any agent can now access your knowledge
-# (via MCP: read_instructions("deploy-vps") or recall("openai/api/key"))
+# Your agent can now access your knowledge via MCP:
+#   read_instructions("deploy-vps")
+#   recall("openai/api/key")
 ```
 
 ### Start the sync daemon

@@ -2,7 +2,7 @@
 
 **A second brain for your coding agent.**
 
-Today's coding agents are spiky geniuses with periodic amnesia. memxp fixes that.
+Today's coding agents are spiky geniuses with periodic amnesia. memxp treats that condition and makes your agent a lot more useful.
 It gives your agent an encrypted, persistent record of what you work on, what works,
 what fails, and how to help -- so every session picks up where the last one left off.
 
@@ -45,9 +45,10 @@ and from there every session builds on the last. That's it.
 
 ### The Problem
 
-Every AI coding tool tells you to create markdown files: `CLAUDE.md`, `.cursorrules`, `AGENTS.md`.
+Lots of Agentic workflow tutorials tell you to create markdown files: `CLAUDE.md`, `.cursorrules`, `AGENTS.md`.
 You maintain them by hand. They drift across machines. They go stale.
 Switch tools and you start over. Your agent asks the same questions every session.
+If you really get into using these files to guide your Agent's work and you are non-technical, this will get messy quickly. 
 
 ### The Solution
 
@@ -57,7 +58,7 @@ time. It keeps a record of what you work on, what works, what fails, and how to
 give each session the best shot at success. Never attempt a task alone again.
 
 - **Second brain** -- Guides, procedures, learnings, and credentials in one place
-- **Gets smarter** -- A learning journal tracks mistakes so they never repeat
+- **Gets smarter** -- A learning journal tracks mistakes so they repeat LESS FREQUENTLY - it's not perfect 
 - **Encrypted** -- API keys, tokens, passwords -- AES-256 at rest, zero plaintext
 - **Syncs everywhere** -- Automatic P2P replication across your machines
 - **Works with any agent** -- Claude Code, Cursor, Codex, Pi, OpenCode -- anything that speaks MCP
@@ -91,11 +92,17 @@ give each session the best shot at success. Never attempt a task alone again.
                        +----------------------+
 ```
 
+You may just want to use this on one dedicated machine for tinkering (adviseable)
+
+But let's say you have a number of machines you use to segregate projects or usecases. 
+
+You can install memxp on each meachine and tell your agent to keep them in sync. It'll figure it out. 
+
 Each machine maintains its own encrypted SQLite database. The sync daemon runs in the
 background and replicates changes using [cr-sqlite](https://github.com/vlcn-io/cr-sqlite)
 CRDTs over a custom binary protocol (MessagePack payloads, HMAC-SHA256 authenticated,
 TLS-encrypted). Tailscale provides the network mesh -- no ports exposed to the public
-internet.
+internet. Tailscale is super easy to set up - ask your agent for help. 
 
 Changes merge automatically. When two machines modify the same entry simultaneously,
 memxp resolves it via last-write-wins (LWW) or queues the conflict for manual review,

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>memxp Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Toast notification container -->
+    <div id="toast-container"></div>
+
+    <!-- Operator challenge banner -->
+    <div id="challenge-banner" class="challenge-banner" style="display:none">
+        <span id="challenge-banner-text"></span>
+        <div id="challenge-banner-actions"></div>
+        <button class="banner-dismiss" onclick="dismissChallengeBanner()">&times;</button>
+    </div>
+
+    <header>
+        <h1>memxp</h1>
+        <div id="auth-controls">
+            <span id="auth-status">Not authenticated</span>
+            <button id="btn-lock" onclick="lockVault()" style="display:none">Lock</button>
+        </div>
+    </header>
+
+    <!-- Auth Section -->
+    <section id="auth-section">
+        <div class="card">
+            <h2>Authentication</h2>
+            <div id="login-form">
+                <input type="password" id="password-input" placeholder="Password">
+                <button onclick="loginPassword()">Login</button>
+                <button onclick="registerPassword()">Register</button>
+            </div>
+            <div id="totp-section" style="display:none">
+                <input type="text" id="totp-input" placeholder="TOTP Code" maxlength="6">
+                <button onclick="verifyTotp()">Verify</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Dashboard (shown after auth) -->
+    <main id="dashboard" style="display:none">
+        <nav>
+            <button class="tab active" onclick="showTab('credentials')">Credentials</button>
+            <button class="tab" onclick="showTab('guides')">Guides</button>
+            <button class="tab" onclick="showTab('sync')">Sync</button>
+            <button class="tab" onclick="showTab('audit')">Audit</button>
+            <button class="tab" onclick="showTab('settings')">Settings</button>
+        </nav>
+
+        <!-- Credentials -->
+        <section id="tab-credentials" class="tab-content">
+            <div class="toolbar">
+                <input type="text" id="search-input" placeholder="Search credentials..." onkeyup="searchCredentials()">
+            </div>
+            <table id="credentials-table">
+                <thead><tr><th>Path</th><th>Value</th><th>Category</th><th>Service</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </section>
+
+        <!-- Guides -->
+        <section id="tab-guides" class="tab-content" style="display:none">
+            <div class="toolbar">
+                <button class="btn-primary" onclick="showGuideCreateForm()">Create Guide</button>
+            </div>
+            <table id="guides-table">
+                <thead><tr><th>Name</th><th>Category</th><th>Status</th><th>Tags</th><th>Actions</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </section>
+
+        <!-- Guide Detail Modal -->
+        <div id="guide-modal" class="modal" style="display:none">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="guide-modal-title"></h3>
+                    <button class="modal-close" onclick="closeGuideModal()">&times;</button>
+                </div>
+                <div class="modal-meta" id="guide-modal-meta"></div>
+                <div class="modal-body" id="guide-modal-body"></div>
+            </div>
+        </div>
+
+        <!-- Guide Create/Edit Modal -->
+        <div id="guide-form-modal" class="modal" style="display:none">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Create Guide</h3>
+                    <button class="modal-close" onclick="closeGuideFormModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="guide-form" onsubmit="submitGuideForm(event)">
+                        <label for="guide-name">Name</label>
+                        <input type="text" id="guide-name" placeholder="e.g. vps-deploy" required>
+
+                        <label for="guide-category">Category</label>
+                        <select id="guide-category">
+                            <option value="procedure">Procedure</option>
+                            <option value="troubleshooting">Troubleshooting</option>
+                            <option value="runbook">Runbook</option>
+                            <option value="setup">Setup</option>
+                        </select>
+
+                        <label for="guide-tags">Tags (comma-separated)</label>
+                        <input type="text" id="guide-tags" placeholder="e.g. deploy, server, caddy">
+
+                        <label for="guide-content">Content (Markdown)</label>
+                        <textarea id="guide-content" rows="12" placeholder="# Guide Title&#10;&#10;## Steps&#10;1. First...&#10;2. Then..." required></textarea>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">Save Guide</button>
+                            <button type="button" onclick="closeGuideFormModal()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sync Status -->
+        <section id="tab-sync" class="tab-content" style="display:none">
+            <div class="card" id="sync-info">Loading...</div>
+        </section>
+
+        <!-- Audit Log -->
+        <section id="tab-audit" class="tab-content" style="display:none">
+            <table id="audit-table">
+                <thead><tr><th>Time</th><th>Action</th><th>Path</th><th>Status</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </section>
+
+        <!-- Settings -->
+        <section id="tab-settings" class="tab-content" style="display:none">
+            <div class="card">
+                <h3>TOTP Setup</h3>
+                <button onclick="setupTotp()">Generate TOTP Secret</button>
+                <div id="totp-result"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>

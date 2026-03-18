@@ -1,0 +1,48 @@
+memxp Tool Reference
+
+MEMORY (12):
+  vault_help(topic?) - This help text
+  whats_saved(query?) - Overview of everything saved
+  recent(limit?) - Recently saved items
+  vault_session_start(since?, rotation_window_days?) - Morning briefing
+  vault_list(category?, service?, prefix?, limit?, offset?) - List with masked values
+  find(query) - Search for saved items by keyword
+  smart_recall(query, include_value?, ...) - Fuzzy search + retrieve
+  recall(path, show_metadata?, copy_to_clipboard?, redact?) - Look up a specific item
+  remember(path, value, category?, service?, ...) - Save something
+  forget(path) - Remove a saved item
+  remember_batch(entries) - Save multiple items at once
+  recall_bundle(prefix, include_values?, show_metadata?) - Get items by prefix
+
+SECURITY (3):
+  vault_inject(path, env_var, overwrite?) - Set env var
+  vault_show_gui(path, copy_to_clipboard?, auto_clear_seconds?) - GUI display
+  vault_audit(path?, action?, limit?, brief?) - View audit log
+
+MONITORING (4):
+  vault_changes(since?, path?, prefix?, action?, limit?) - Change history
+  vault_impact(app) - Credentials affecting an app
+  vault_lint(prefix?, similarity_threshold?, ...) - Path hygiene
+  vault_rotation_alerts(window_days?, include_overdue?) - Rotation due
+
+CONFLICTS (3):
+  vault_conflicts(include_resolved?, path?, stats_only?) - List conflicts
+  vault_resolve_conflict(conflict_id, resolution, value?, notes?) - Resolve
+  vault_conflict_mode(path, mode) - Set handling mode
+
+HOW-TO GUIDES (8):
+  save_instructions(name, content, category?, ...) - Save a how-to
+  read_instructions(name) - Read a how-to
+  list_instructions(category?, status?) - List all how-tos
+  find_instructions(query) - Search how-tos
+  forget_instructions(name) - Remove a how-to
+  verify_instructions(name) - Mark as verified
+  deprecate_instructions(name) - Mark as outdated
+  stale_instructions(threshold_days?) - List unverified how-tos
+
+AUTH (5):
+  vault_authenticate(token) - Authenticate MCP session token (optional)
+  vault_auth_status() - Authentication + operator mode status
+  vault_operator_mode(enable, password?, ttl_seconds?) - Temporary elevation for high-risk writes
+  vault_lock() - Lock vault access
+  vault_unlock(password) - Unlock vault access

@@ -1,0 +1,25 @@
+memxp - Your Persistent Memory
+
+WORKFLOW:
+1. whats_saved() - See what's in your memory
+2. find(query) - Search for something saved
+3. recall(path) - Look up a specific item
+4. remember(path, value, ...) - Save something for later
+5. read_instructions(name) - Read a saved how-to guide
+
+SECURITY:
+- Values are MASKED in search results
+- Use redact=true to copy to clipboard without exposing in chat
+- vault_inject() sets env vars without returning values
+- All access is logged via vault_audit()
+
+TOOLS:
+  Memory: vault_help, whats_saved, recent, vault_session_start,
+    vault_list, find, smart_recall, recall, remember, forget,
+    remember_batch, recall_bundle
+  Security: vault_inject, vault_show_gui, vault_audit
+  Monitoring: vault_changes, vault_impact, vault_lint, vault_rotation_alerts
+  Conflicts: vault_conflicts, vault_resolve_conflict, vault_conflict_mode
+  How-tos: save_instructions, read_instructions, list_instructions, find_instructions,
+    forget_instructions, verify_instructions, deprecate_instructions, stale_instructions
+  Auth: vault_authenticate, vault_auth_status, vault_operator_mode, vault_lock, vault_unlock

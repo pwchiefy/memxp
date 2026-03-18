@@ -1,0 +1,14 @@
+memxp Workflow Guide
+
+1. EXPLORE: whats_saved() to see categories, services, totals
+2. SEARCH: find(query) to find saved items by keyword
+3. LOOK UP: recall(path) to retrieve a specific item
+4. SAVE: remember(path, value, category, service, ...) to save something
+5. HOW-TOS: read_instructions(name) to read saved procedures
+6. SESSION: vault_session_start() for status snapshot (conflicts, alerts)
+
+Path convention: <service>/<resource>/<detail>
+  Examples: aws/s3/access_key, postgres/prod/url, gitea/admin/password
+
+Guide convention: <service>-<action>
+  Examples: vps-deploy, caddy-config, postgres-backup

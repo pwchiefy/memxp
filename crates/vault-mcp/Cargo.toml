@@ -1,0 +1,21 @@
+[package]
+name = "vault-mcp"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+vault-core = { path = "../vault-core" }
+rmcp = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+arboard = { workspace = true }
+uuid = { workspace = true }
+constant_time_eq = "0.4"
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -1,0 +1,39 @@
+{
+  "machines": [
+    {
+      "host": "my-macbook",
+      "ip": "100.64.1.1",
+      "os": "macos",
+      "arch": "arm64",
+      "user": "me",
+      "role": "local",
+      "notes": "Primary dev machine — do not SSH, run locally"
+    },
+    {
+      "host": "home-server",
+      "ip": "100.64.1.2",
+      "os": "macos",
+      "arch": "arm64",
+      "user": "admin",
+      "role": "compute",
+      "notes": "Example compute node"
+    },
+    {
+      "host": "vps-01",
+      "ip": "100.64.1.3",
+      "os": "linux",
+      "arch": "x86_64",
+      "user": "root",
+      "role": "vps",
+      "notes": "Example Linux VPS"
+    }
+  ],
+  "excluded": [
+    {
+      "host": "old-machine",
+      "ip": "100.64.1.99",
+      "os": "windows",
+      "reason": "Example excluded machine"
+    }
+  ]
+}

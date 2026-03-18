@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  package:
+    name: Package (${{ matrix.artifact }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: memxp-macos-arm64
+            crsqlite_asset: crsqlite-darwin-aarch64.zip
+            crsqlite_ext: crsqlite.dylib
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: memxp-macos-x86_64
+            crsqlite_asset: crsqlite-darwin-x86_64.zip
+            crsqlite_ext: crsqlite.dylib
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: memxp-linux-x86_64
+            crsqlite_asset: crsqlite-linux-x86_64.zip
+            crsqlite_ext: crsqlite.so
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: memxp-windows-x86_64
+            crsqlite_asset: crsqlite-win-x86_64.zip
+            crsqlite_ext: crsqlite.dll
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Download cr-sqlite extension
+        shell: bash
+        run: |
+          curl -fsSL -o crsqlite.zip "https://github.com/vlcn-io/cr-sqlite/releases/download/v0.16.3/${{ matrix.crsqlite_asset }}"
+          unzip -o crsqlite.zip -d crsqlite-tmp
+          echo "cr-sqlite extension extracted:"
+          ls -la crsqlite-tmp/
+
+      - name: Package artifacts (unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/memxp dist/memxp
+          cp crsqlite-tmp/${{ matrix.crsqlite_ext }} dist/${{ matrix.crsqlite_ext }}
+          chmod +x dist/memxp
+          tar -czf dist/${{ matrix.artifact }}.tar.gz -C dist memxp ${{ matrix.crsqlite_ext }}
+          zip -j dist/${{ matrix.artifact }}.zip dist/memxp dist/${{ matrix.crsqlite_ext }}
+
+      - name: Package artifacts (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/memxp.exe" "dist/memxp.exe" -Force
+          Copy-Item "crsqlite-tmp/${{ matrix.crsqlite_ext }}" "dist/${{ matrix.crsqlite_ext }}" -Force
+          Compress-Archive -Path "dist/memxp.exe","dist/${{ matrix.crsqlite_ext }}" -DestinationPath "dist/${{ matrix.artifact }}.zip" -Force
+          tar -czf "dist/${{ matrix.artifact }}.tar.gz" -C dist memxp.exe ${{ matrix.crsqlite_ext }}
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}-packages
+          path: dist
+
+  release:
+    name: Create GitHub release
+    runs-on: ubuntu-latest
+    needs: package
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: packages
+          pattern: "*-packages"
+          merge-multiple: true
+
+      - name: Flatten artifacts and build checksums
+        run: |
+          mkdir -p dist
+          find packages -type f \( -name "*.tar.gz" -o -name "*.zip" \) -print0 | \
+          while IFS= read -r -d '' artifact; do
+            bn="$(basename "$artifact")"
+            cp "$artifact" "dist/$bn"
+          done
+
+          > dist/checksums.txt
+          for file in $(find dist -type f \( -name "*.tar.gz" -o -name "*.zip" \) | sort); do
+            bn="$(basename "$file")"
+            hash="$(sha256sum "$file" | awk '{ print $1 }')"
+            echo "${hash}  ${bn}" >> dist/checksums.txt
+          done
+
+      - name: Publish release with checksums
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: memxp ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/memxp-*.tar.gz
+            dist/memxp-*.zip
+            dist/checksums.txt

@@ -1,0 +1,27 @@
+[package]
+name = "vault-sync"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+vault-core = { path = "../vault-core" }
+anyhow = "1"
+rusqlite = { workspace = true }
+tokio = { workspace = true }
+rmp-serde = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+dirs = { workspace = true }
+hmac = { workspace = true }
+sha2 = { workspace = true }
+rand = { workspace = true }
+rustls = { workspace = true }
+tokio-rustls = { workspace = true }
+rcgen = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

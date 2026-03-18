@@ -1,0 +1,79 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/vault-core",
+    "crates/vault-sync",
+    "crates/vault-mcp",
+    "crates/vault-web",
+    "crates/vault-cli",
+    "tests",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["memxp Contributors"]
+
+[workspace.dependencies]
+# Core
+rusqlite = { version = "0.33", features = ["bundled-sqlcipher-vendored-openssl", "load_extension"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+libc = "0.2"
+
+# Crypto
+chacha20poly1305 = "0.10"
+argon2 = "0.5"
+sha2 = "0.10"
+hmac = "0.12"
+rand = "0.8"
+zeroize = "1"
+
+# TLS
+rustls = "0.23"
+tokio-rustls = "0.26"
+rcgen = "0.13"
+
+# Platform
+keyring = { version = "3", features = ["apple-native", "windows-native", "linux-native"] }
+arboard = "3"
+dirs = "6"
+strsim = "0.11"
+
+# Async
+tokio = { version = "1", features = ["full"] }
+
+# Sync wire protocol
+rmp-serde = "1"
+
+# MCP
+rmcp = { version = "0.14", features = ["server", "macros", "transport-io"] }
+schemars = "1"
+
+# Web
+axum = { version = "0.8", features = ["json"] }
+tower-http = { version = "0.6", features = ["fs", "cors"] }
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+
+# Auth
+totp-rs = { version = "5.7", features = ["qr", "gen_secret"] }
+base32 = "0.5"
+
+# Testing
+tempfile = "3"
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
+opt-level = "s"
+panic = "abort"

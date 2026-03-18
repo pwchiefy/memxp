@@ -1,0 +1,31 @@
+[package]
+name = "memxp-integration-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# This crate exists only to house integration tests that span multiple workspace crates.
+# It has no lib.rs — only test files.
+
+[lib]
+name = "memxp_integration_tests"
+path = "lib.rs"
+
+[[test]]
+name = "wire_compat"
+path = "wire_compat.rs"
+
+[[test]]
+name = "e2e"
+path = "e2e.rs"
+
+[dependencies]
+vault-core = { path = "../crates/vault-core" }
+vault-sync = { path = "../crates/vault-sync" }
+vault-mcp = { path = "../crates/vault-mcp" }
+vault-web = { path = "../crates/vault-web" }
+tempfile = { workspace = true }
+serde_json = { workspace = true }
+rusqlite = { workspace = true }
+rmp-serde = { workspace = true }
+rmcp = { workspace = true }

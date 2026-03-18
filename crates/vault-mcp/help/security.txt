@@ -1,0 +1,10 @@
+memxp Security Guide
+
+- All saved items are encrypted at rest via SQLCipher (AES-256-CBC, PBKDF2-HMAC-SHA512)
+- Values are MASKED in search results
+- Use redact=true with recall/smart_recall to copy to clipboard only
+- vault_inject() sets env vars without exposing values in responses
+- vault_show_gui() displays via GUI/clipboard, never in chat
+- All access is logged: vault_audit() to view the audit trail
+- Clipboard auto-clears after 30 seconds by default
+- P2P sync uses Tailscale (encrypted WireGuard tunnels)

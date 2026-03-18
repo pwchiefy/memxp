@@ -1,0 +1,14 @@
+/target
+*.db
+*.db-shm
+*.db-wal
+*.bak
+.DS_Store
+.env
+.env.*
+.memxp/
+.vaultp2p/
+*.pem
+*.key
+devdocsvp2prs/
+scripts/fleet.local.json

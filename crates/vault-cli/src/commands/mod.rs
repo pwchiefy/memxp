@@ -1,0 +1,16 @@
+pub mod advanced;
+pub mod auth;
+pub mod config;
+pub mod confirm;
+pub mod conflicts;
+pub mod credentials;
+pub mod daemon;
+pub mod doctor;
+pub mod encrypt;
+pub mod export_import;
+pub mod guides;
+pub mod init;
+pub mod mcp_bridge;
+pub mod monitoring;
+pub mod self_update;
+pub mod sync;

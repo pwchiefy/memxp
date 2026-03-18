@@ -53,8 +53,19 @@ for logdir in "$HOME/.vaultp2p/logs" "$HOME/.memxp/logs"; do
 done
 
 # --- Start daemon ---
+INSECURE_TLS="true"  # default for backward compat
+CONFIG_FILE="$HOME/.memxp/config.yaml"
+[[ ! -f "$CONFIG_FILE" ]] && CONFIG_FILE="$HOME/.vaultp2p/config.yaml"
+if [[ -f "$CONFIG_FILE" ]]; then
+    grep -q 'insecure_skip_tls_verify:\s*false' "$CONFIG_FILE" 2>/dev/null && INSECURE_TLS="false"
+fi
+
 log "Starting memxp daemon..."
-"$MEMXP" daemon start --insecure-skip-tls-verify 2>&1
+if [[ "$INSECURE_TLS" == "true" ]]; then
+    "$MEMXP" daemon start --insecure-skip-tls-verify 2>&1
+else
+    "$MEMXP" daemon start 2>&1
+fi
 
 sleep 2
 

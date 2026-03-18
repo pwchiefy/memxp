@@ -59,7 +59,7 @@ give each session the best shot at success. Never attempt a task alone again.
 
 - **Second brain** -- Guides, procedures, learnings, and credentials in one place
 - **Gets smarter** -- A learning journal tracks mistakes so they repeat LESS FREQUENTLY - it's not perfect 
-- **Encrypted** -- API keys, tokens, passwords -- AES-256 at rest, zero plaintext
+- **Encrypted** -- API keys, tokens, passwords -- AES-256 at rest
 - **Syncs everywhere** -- Automatic P2P replication across your machines
 - **Works with any agent** -- Claude Code, Cursor, Codex, Pi, OpenCode -- anything that speaks MCP
 - **Single binary** -- CLI, MCP server, sync daemon, and web GUI in one `memxp` binary
@@ -78,7 +78,7 @@ give each session the best shot at success. Never attempt a task alone again.
  |    | Cipher  |<------+------------------------+---->| Cipher  |       |
  |    |  + CRDT |       |  HMAC-authenticated    |    |  + CRDT |       |
  |    +---------+       |  binary protocol       |    +---------+       |
- +----------------------+  over mutual TLS       +----------------------+
+ +----------------------+  over TLS              +----------------------+
            |                                                |
            |            Machine C (Windows)                 |
            |           +----------------------+             |
@@ -134,8 +134,8 @@ memxp guide add deploy-vps \
   --content "# Deploy to VPS\n1. SSH into server..." \
   --category procedure
 
-# Store a credential
-memxp set openai/api/key "sk-..." --service openai --category api_key
+# Store a credential (pipe to avoid shell history exposure)
+echo "sk-..." | memxp set openai/api/key - --service openai --category api_key
 
 # Your agent can now access your knowledge via MCP:
 #   read_instructions("deploy-vps")
@@ -361,10 +361,11 @@ vault_inject(path="npm/token", env_var="NPM_TOKEN")
 
 ### Encryption in Transit
 
-- All peer-to-peer sync uses **mutual TLS** (self-signed certificates, auto-generated)
+- All peer-to-peer sync uses **TLS** (self-signed certificates, auto-generated; no client certificate authentication)
 - Custom binary wire protocol with **HMAC-SHA256** message authentication
 - HMAC key derived from the shared vault passphrase -- only machines with the same passphrase can sync
 - Transport runs over **Tailscale** (WireGuard) -- double-encrypted, no public internet exposure
+- **Primary transport security** is provided by **Tailscale** (WireGuard) -- peers never communicate over the public internet
 
 ### Access Control
 

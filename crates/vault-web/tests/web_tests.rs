@@ -68,7 +68,7 @@ async fn test_password_register_login() {
     assert_eq!(resp.status(), 200);
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(body["status"], "registered");
-    assert!(body["session_id"].is_string());
+    assert!(body.get("session_id").is_none(), "session_id must not appear in response body");
 
     // Login
     let resp = client
@@ -80,8 +80,7 @@ async fn test_password_register_login() {
     assert_eq!(resp.status(), 200);
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(body["status"], "authenticated");
-    let session_id = body["session_id"].as_str().unwrap();
-    assert!(!session_id.is_empty());
+    assert!(body.get("session_id").is_none(), "session_id must not appear in response body");
 }
 
 #[tokio::test]
@@ -182,9 +181,8 @@ async fn test_api_credentials_list() {
 
     let client = reqwest::Client::new();
     let resp = client
-        .get(format!(
-            "http://{addr}/api/credentials?session_id={session_id}"
-        ))
+        .get(format!("http://{addr}/api/credentials"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .send()
         .await
         .unwrap();
@@ -207,9 +205,8 @@ async fn test_api_sync_status() {
 
     let client = reqwest::Client::new();
     let resp = client
-        .get(format!(
-            "http://{addr}/api/sync/status?session_id={session_id}"
-        ))
+        .get(format!("http://{addr}/api/sync/status"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .send()
         .await
         .unwrap();
@@ -338,9 +335,8 @@ async fn test_guide_get_content() {
 
     let client = reqwest::Client::new();
     let resp = client
-        .get(format!(
-            "http://{addr}/api/guides/test-guide?session_id={session_id}"
-        ))
+        .get(format!("http://{addr}/api/guides/test-guide"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .send()
         .await
         .unwrap();
@@ -367,7 +363,8 @@ async fn test_guide_create() {
 
     // Create a guide via POST
     let resp = client
-        .post(format!("http://{addr}/api/guides?session_id={session_id}"))
+        .post(format!("http://{addr}/api/guides"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .json(&serde_json::json!({
             "name": "new-guide",
             "content": "# New Guide\n\nCreated via API.",
@@ -385,9 +382,8 @@ async fn test_guide_create() {
 
     // Now GET the guide to verify content
     let resp = client
-        .get(format!(
-            "http://{addr}/api/guides/new-guide?session_id={session_id}"
-        ))
+        .get(format!("http://{addr}/api/guides/new-guide"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .send()
         .await
         .unwrap();
@@ -427,9 +423,8 @@ async fn test_guide_get_not_found() {
 
     let client = reqwest::Client::new();
     let resp = client
-        .get(format!(
-            "http://{addr}/api/guides/nonexistent?session_id={session_id}"
-        ))
+        .get(format!("http://{addr}/api/guides/nonexistent"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .send()
         .await
         .unwrap();
@@ -447,9 +442,8 @@ async fn test_challenges_pending_empty() {
 
     let client = reqwest::Client::new();
     let resp = client
-        .get(format!(
-            "http://{addr}/api/challenges/pending?session_id={session_id}"
-        ))
+        .get(format!("http://{addr}/api/challenges/pending"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .send()
         .await
         .unwrap();
@@ -487,9 +481,8 @@ async fn test_credential_clipboard() {
 
     let client = reqwest::Client::new();
     let resp = client
-        .post(format!(
-            "http://{addr}/api/clipboard/api/clipboard/test?session_id={session_id}"
-        ))
+        .post(format!("http://{addr}/api/clipboard/api/clipboard/test"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .send()
         .await
         .unwrap();
@@ -541,9 +534,8 @@ async fn test_events_poll() {
 
     let client = reqwest::Client::new();
     let resp = client
-        .get(format!(
-            "http://{addr}/api/events/poll?session_id={session_id}"
-        ))
+        .get(format!("http://{addr}/api/events/poll"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .send()
         .await
         .unwrap();
@@ -603,7 +595,8 @@ async fn test_guide_create_update() {
 
     // Create guide
     let resp = client
-        .post(format!("http://{addr}/api/guides?session_id={session_id}"))
+        .post(format!("http://{addr}/api/guides"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .json(&serde_json::json!({
             "name": "updatable-guide",
             "content": "version 1",
@@ -615,7 +608,8 @@ async fn test_guide_create_update() {
 
     // Update the same guide
     let resp = client
-        .post(format!("http://{addr}/api/guides?session_id={session_id}"))
+        .post(format!("http://{addr}/api/guides"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .json(&serde_json::json!({
             "name": "updatable-guide",
             "content": "version 2",
@@ -628,9 +622,8 @@ async fn test_guide_create_update() {
 
     // Verify the content was updated
     let resp = client
-        .get(format!(
-            "http://{addr}/api/guides/updatable-guide?session_id={session_id}"
-        ))
+        .get(format!("http://{addr}/api/guides/updatable-guide"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .send()
         .await
         .unwrap();
@@ -666,7 +659,8 @@ async fn test_guide_create_empty_name_rejected() {
 
     let client = reqwest::Client::new();
     let resp = client
-        .post(format!("http://{addr}/api/guides?session_id={session_id}"))
+        .post(format!("http://{addr}/api/guides"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .json(&serde_json::json!({
             "name": "  ",
             "content": "some content",
@@ -723,9 +717,8 @@ async fn test_totp_setup_requires_session() {
     // Register + login, then TOTP setup should work
     let session_id = setup_auth(&addr, &state).await;
     let resp = client
-        .post(format!(
-            "http://{addr}/api/auth/totp/setup?session_id={session_id}"
-        ))
+        .post(format!("http://{addr}/api/auth/totp/setup"))
+        .header("Cookie", format!("vault_session={session_id}"))
         .json(&serde_json::json!({}))
         .send()
         .await

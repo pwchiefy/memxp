@@ -396,7 +396,7 @@ memxp
   |-- config show               # Show current config
   |-- config set <key> <value>  # Update config
   |-- audit [--path] [--action] # View audit log
-  |-- export                    # Export vault (encrypted JSON)
+  |-- export                    # Export vault (plaintext JSON — encrypt externally)
   |-- import                    # Import from export
   |-- lock                      # Lock the vault
   |-- unlock                    # Unlock with passphrase

@@ -1,14 +1,13 @@
 // VaultP2P Dashboard — vanilla JS
 
-let sessionId = null;
 let pollInterval = null;
 let lastPollData = null;
 const API = '/api';
 
 function api(path, opts = {}) {
     const url = new URL(path, window.location.origin);
-    if (sessionId) url.searchParams.set('session_id', sessionId);
     return fetch(url, {
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json', ...opts.headers },
         ...opts,
     }).then(async r => {
@@ -58,8 +57,7 @@ async function loginPassword() {
         method: 'POST',
         body: JSON.stringify({ password: pw }),
     });
-    if (res.session_id) {
-        sessionId = res.session_id;
+    if (res.status === 'authenticated') {
         onAuthenticated();
     } else {
         alert(res.error || 'Login failed');
@@ -73,8 +71,7 @@ async function registerPassword() {
         method: 'POST',
         body: JSON.stringify({ password: pw }),
     });
-    if (res.session_id) {
-        sessionId = res.session_id;
+    if (res.status === 'registered') {
         onAuthenticated();
     } else {
         alert(res.error || 'Registration failed');
@@ -87,8 +84,7 @@ async function verifyTotp() {
         method: 'POST',
         body: JSON.stringify({ code }),
     });
-    if (res.session_id) {
-        sessionId = res.session_id;
+    if (res.status === 'authenticated') {
         onAuthenticated();
     } else {
         alert(res.error || 'Invalid code');
@@ -97,7 +93,6 @@ async function verifyTotp() {
 
 async function lockVault() {
     await api(`${API}/auth/lock`, { method: 'POST' });
-    sessionId = null;
     if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
     document.getElementById('dashboard').style.display = 'none';
     document.getElementById('auth-section').style.display = 'flex';
@@ -136,7 +131,6 @@ function startPolling() {
 }
 
 async function pollEvents() {
-    if (!sessionId) return;
     const res = await api(`${API}/events/poll`);
     if (res.error) return;
 

@@ -22,11 +22,14 @@ memxp init
 ### 1.2 Store API keys
 
 ```bash
-# Minimal — path and value are the only required arguments
+# Preferred — pipe value via stdin to avoid shell history exposure
+echo "sk-proj-abc123def456" | memxp set api/openai/key -
+
+# Inline form (value visible in shell history — use for non-sensitive data)
 memxp set api/openai/key "sk-proj-abc123def456"
 
 # With full metadata for search, rotation alerts, and impact tracking
-memxp set api/openai/key "sk-proj-abc123def456" \
+echo "sk-proj-abc123def456" | memxp set api/openai/key - \
   --category api_key \
   --service openai \
   --notes "Production key, billing account eng@company.com" \
@@ -507,6 +510,12 @@ memxp export -o vault-backup-20260305.json
 # Import into a new vault
 memxp import vault-backup-20260305.json
 ```
+
+> **Security note:** `memxp export` writes plaintext JSON including credential
+> values. Encrypt the output if storing it:
+> ```bash
+> memxp export | gpg --symmetric --cipher-algo AES256 > vault-backup.gpg
+> ```
 
 ---
 

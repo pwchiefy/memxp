@@ -151,8 +151,11 @@ impl VaultMcpServer {
             .filter(|v| !v.trim().is_empty());
         let session_required = session_token.is_some();
 
-        // Check if passphrase is resolvable at startup (Keychain or env var).
-        // If so, operator mode can auto-resolve without agent providing password.
+        // Trust model: The local agent process is trusted. Passphrase availability
+        // at startup (OS Keychain or VAULT_PASSPHRASE env var) proves machine-level
+        // authorization. The MCP process authenticated by opening the encrypted DB.
+        // Operator mode can auto-promote without re-prompting — passphrase
+        // availability IS the authentication factor.
         let startup_passphrase_available = vault_core::auth::resolve_passphrase_keychain_first()
             .ok()
             .flatten()
@@ -874,10 +877,11 @@ impl VaultMcpServer {
                 ));
             }
             let until = state.elevate_operator(p.ttl_seconds.unwrap_or(DEFAULT_OPERATOR_TTL_SECS));
+            let method = if p.password.is_some() { "password" } else { "startup_passphrase_auto" };
             state.log_audit(
                 "vault_operator_mode",
                 None,
-                Some(&format!("enabled_until_epoch={until}")),
+                Some(&format!("enabled_until_epoch={until}, method={method}")),
             );
             Ok(CallToolResult::success(vec![rmcp::model::Content::text(
                 serde_json::json!({

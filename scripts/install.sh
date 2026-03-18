@@ -21,6 +21,12 @@
 #
 # After install, open Terminal and run: cd ~/Developer && claude
 # Then say: "let's get started"
+#
+# Trust model:
+#   memxp is a single-user, machine-local tool. The local agent process
+#   (Claude Code MCP) is trusted. The passphrase in ~/.memxp/env (chmod 600)
+#   proves machine-level authorization — equivalent to SSH keys in ~/.ssh/.
+#   --no-auto-approve skips permission pre-approval for explicit consent.
 
 set -eu
 
@@ -38,12 +44,14 @@ else
   VAULT_DIR="$HOME/.memxp"
 fi
 SKIP_CLAUDE=0
+NO_AUTO_APPROVE=0
 
 # ── Parse arguments ───────────────────────────────────────────
 while [ $# -gt 0 ]; do
   case "$1" in
     --version)    VERSION="${2:-}"; shift 2 ;;
     --skip-claude) SKIP_CLAUDE=1; shift ;;
+    --no-auto-approve) NO_AUTO_APPROVE=1; shift ;;
     -h|--help)
       sed -n '2,/^$/s/^# //p' "$0"
       exit 0
@@ -344,27 +352,12 @@ else
   printf 'VAULT_PASSPHRASE="%s"\n' "$PASSPHRASE" > "$VAULT_DIR/env"
   chmod 600 "$VAULT_DIR/env"
 
-  # Save passphrase backup in a findable location
-  BACKUP_FILE="$HOME/Desktop/memxp-passphrase.txt"
-  cat > "$BACKUP_FILE" <<PASSFILE
-memxp Passphrase — KEEP THIS SAFE
-==================================
-
-Your memxp encryption passphrase is:
-
-  $PASSPHRASE
-
-This passphrase protects everything Claude remembers for you.
-You'll need it if you set up memxp on another computer.
-
-Store this somewhere safe (like a password manager), then
-delete this file from your Desktop.
-
-Setup date: $(date '+%B %d, %Y')
-PASSFILE
-  chmod 600 "$BACKUP_FILE"
-  ok "Passphrase saved to Desktop/memxp-passphrase.txt"
-  info "Move it somewhere safe, then delete the file."
+  printf "\n"
+  printf "  ${YELLOW}${BOLD}IMPORTANT: Save this passphrase somewhere safe${NC}\n"
+  printf "  (e.g., a password manager). You'll need it to set up\n"
+  printf "  memxp on other machines or recover from backups.\n\n"
+  printf "  ${BOLD}Passphrase:${NC} %s\n\n" "$PASSPHRASE"
+  ok "Passphrase stored in ~/.memxp/env (chmod 600)"
 fi
 
 # Source passphrase for this session
@@ -403,13 +396,14 @@ if [ "$SKIP_CLAUDE" = "0" ] && [ -n "${CLAUDE_BIN:-}" ]; then
   ok "Registered memxp with Claude Code"
 
   # Pre-configure permissions so Claude can use memxp without prompting
-  SETTINGS_DIR="$HOME/.claude"
-  SETTINGS_FILE="$SETTINGS_DIR/settings.json"
-  mkdir -p "$SETTINGS_DIR"
+  if [ "$NO_AUTO_APPROVE" = "0" ]; then
+    SETTINGS_DIR="$HOME/.claude"
+    SETTINGS_FILE="$SETTINGS_DIR/settings.json"
+    mkdir -p "$SETTINGS_DIR"
 
-  if [ -f "$SETTINGS_FILE" ]; then
-    # Merge permissions into existing settings
-    python3 -c "
+    if [ -f "$SETTINGS_FILE" ]; then
+      # Merge permissions into existing settings
+      python3 -c "
 import json, sys
 
 with open('$SETTINGS_FILE', 'r') as f:
@@ -427,8 +421,8 @@ with open('$SETTINGS_FILE', 'w') as f:
     json.dump(settings, f, indent=2)
     f.write('\n')
 " 2>/dev/null || true
-  else
-    cat > "$SETTINGS_FILE" <<'SETTINGS'
+    else
+      cat > "$SETTINGS_FILE" <<'SETTINGS'
 {
   "permissions": {
     "allow": [
@@ -437,8 +431,11 @@ with open('$SETTINGS_FILE', 'w') as f:
   }
 }
 SETTINGS
+    fi
+    ok "Pre-approved memxp tools (no permission prompts)"
+  else
+    info "Skipping auto-approve (--no-auto-approve). Claude will prompt for each tool."
   fi
-  ok "Pre-approved memxp tools (no permission prompts)"
 
 else
   if [ "$SKIP_CLAUDE" = "0" ]; then
@@ -626,6 +623,5 @@ if [ "$SKIP_CLAUDE" = "0" ] && [ -z "${CLAUDE_BIN:-}" ]; then
   printf "\n"
 fi
 
-printf "  ${DIM}Passphrase backup: ~/Desktop/memxp-passphrase.txt${NC}\n"
-printf "  ${DIM}Store it somewhere safe, then delete the file.${NC}\n"
+printf "  ${DIM}Passphrase stored in ~/.memxp/env (chmod 600)${NC}\n"
 printf "\n"

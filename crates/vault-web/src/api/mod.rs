@@ -1,9 +1,8 @@
 //! REST API endpoints mirroring MCP tools.
 
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::http::{header, HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
@@ -22,25 +21,15 @@ pub struct AppState {
     pub auth: AuthState,
 }
 
-/// Extract session ID from cookie or query param, validate.
+/// Validate session from HttpOnly cookie only.
 /// Returns FORBIDDEN if auth is not configured (must register first).
 /// Returns UNAUTHORIZED if session is missing or invalid.
-fn require_auth(
-    auth: &AuthState,
-    session_id: Option<&str>,
-    headers: &HeaderMap,
-) -> Result<(), StatusCode> {
-    // If no auth configured, block access — must register first
+fn require_auth(auth: &AuthState, headers: &HeaderMap) -> Result<(), StatusCode> {
     if !auth.is_configured() {
         return Err(StatusCode::FORBIDDEN);
     }
-    // Try HttpOnly cookie first, then query param fallback
-    let cookie_sid = session_from_cookie(headers);
-    let sid = cookie_sid
-        .as_deref()
-        .or(session_id)
-        .ok_or(StatusCode::UNAUTHORIZED)?;
-    if auth.validate_session(sid) {
+    let sid = session_from_cookie(headers).ok_or(StatusCode::UNAUTHORIZED)?;
+    if auth.validate_session(&sid) {
         Ok(())
     } else {
         Err(StatusCode::UNAUTHORIZED)
@@ -119,7 +108,6 @@ pub async fn auth_register(
                 [(header::SET_COOKIE, cookie)],
                 Json(serde_json::json!({
                     "status": "registered",
-                    "session_id": sid,
                 })),
             )
                 .into_response()
@@ -156,7 +144,6 @@ pub async fn auth_login(
                 [(header::SET_COOKIE, cookie)],
                 Json(serde_json::json!({
                     "status": "authenticated",
-                    "session_id": sid,
                 })),
             )
                 .into_response()
@@ -176,10 +163,9 @@ pub async fn auth_login(
 pub async fn auth_totp_setup(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    axum::extract::Query(q): axum::extract::Query<AuthQuery>,
     Json(body): Json<TotpSetupBody>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(&state.auth, q.session_id.as_deref(), &headers) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -225,7 +211,6 @@ pub async fn auth_totp_verify(
                 [(header::SET_COOKIE, cookie)],
                 Json(serde_json::json!({
                     "status": "authenticated",
-                    "session_id": sid,
                 })),
             )
                 .into_response()
@@ -259,12 +244,6 @@ pub async fn auth_lock(State(state): State<Arc<AppState>>) -> impl IntoResponse 
 
 // --- Protected endpoints ---
 
-/// Query params for auth.
-#[derive(Deserialize)]
-pub struct AuthQuery {
-    pub session_id: Option<String>,
-}
-
 #[derive(Deserialize)]
 pub struct GuideDeleteBody {
     pub name: String,
@@ -279,9 +258,8 @@ fn delete_guide_inner(state: &Arc<AppState>, name: &str) -> Result<bool, String>
 pub async fn credentials_list(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    axum::extract::Query(q): axum::extract::Query<AuthQuery>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(&state.auth, q.session_id.as_deref(), &headers) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -319,9 +297,8 @@ pub async fn credentials_get(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     axum::extract::Path(path): axum::extract::Path<String>,
-    axum::extract::Query(q): axum::extract::Query<AuthQuery>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(&state.auth, q.session_id.as_deref(), &headers) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -356,9 +333,8 @@ pub async fn credentials_get(
 pub async fn guides_list(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    axum::extract::Query(q): axum::extract::Query<AuthQuery>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(&state.auth, q.session_id.as_deref(), &headers) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -390,9 +366,8 @@ pub async fn guides_delete(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
     axum::extract::Path(name): axum::extract::Path<String>,
-    axum::extract::Query(q): axum::extract::Query<AuthQuery>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(&state.auth, q.session_id.as_deref(), &headers) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -428,10 +403,9 @@ pub async fn guides_delete(
 pub async fn guides_delete_post(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    axum::extract::Query(q): axum::extract::Query<AuthQuery>,
     Json(body): Json<GuideDeleteBody>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(&state.auth, q.session_id.as_deref(), &headers) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -467,9 +441,8 @@ pub async fn guides_delete_post(
 pub async fn sync_status(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    axum::extract::Query(q): axum::extract::Query<AuthQuery>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(&state.auth, q.session_id.as_deref(), &headers) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -490,9 +463,8 @@ pub async fn sync_status(
 pub async fn audit_list(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    axum::extract::Query(q): axum::extract::Query<AuthQuery>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(&state.auth, q.session_id.as_deref(), &headers) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -526,13 +498,8 @@ pub async fn guide_get(
     Path(name): Path<String>,
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    Query(params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(
-        &state.auth,
-        params.get("session_id").map(|s| s.as_str()),
-        &headers,
-    ) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -578,14 +545,9 @@ pub struct GuideCreateRequest {
 pub async fn guide_create(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    Query(params): Query<HashMap<String, String>>,
     Json(body): Json<GuideCreateRequest>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(
-        &state.auth,
-        params.get("session_id").map(|s| s.as_str()),
-        &headers,
-    ) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -627,13 +589,8 @@ pub async fn guide_create(
 pub async fn challenges_pending(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    Query(params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(
-        &state.auth,
-        params.get("session_id").map(|s| s.as_str()),
-        &headers,
-    ) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -672,14 +629,9 @@ pub async fn challenge_confirm(
     Path(id): Path<String>,
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    Query(params): Query<HashMap<String, String>>,
     Json(body): Json<ChallengeConfirmRequest>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(
-        &state.auth,
-        params.get("session_id").map(|s| s.as_str()),
-        &headers,
-    ) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -710,13 +662,8 @@ pub async fn credential_clipboard(
     Path(path): Path<String>,
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    Query(params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(
-        &state.auth,
-        params.get("session_id").map(|s| s.as_str()),
-        &headers,
-    ) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 
@@ -784,13 +731,8 @@ pub async fn credential_clipboard(
 pub async fn events_poll(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-    Query(params): Query<HashMap<String, String>>,
 ) -> impl IntoResponse {
-    if let Err(status) = require_auth(
-        &state.auth,
-        params.get("session_id").map(|s| s.as_str()),
-        &headers,
-    ) {
+    if let Err(status) = require_auth(&state.auth, &headers) {
         return auth_error_response(status);
     }
 

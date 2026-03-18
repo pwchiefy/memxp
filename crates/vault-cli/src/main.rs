@@ -611,17 +611,29 @@ async fn main() {
             env,
             storage_mode,
             rotation_days,
-        } => commands::credentials::set(&commands::credentials::SetOpts {
-            path: &path,
-            value: &value,
-            category: category.as_deref(),
-            service: service.as_deref(),
-            notes: notes.as_deref(),
-            tags: &tags,
-            env: env.as_deref(),
-            storage_mode: storage_mode.as_deref(),
-            rotation_days,
-        }),
+        } => {
+            let effective_value = if value == "-" {
+                use std::io::Read;
+                let mut buf = String::new();
+                std::io::stdin()
+                    .read_to_string(&mut buf)
+                    .expect("failed to read value from stdin");
+                buf.trim_end().to_string()
+            } else {
+                value
+            };
+            commands::credentials::set(&commands::credentials::SetOpts {
+                path: &path,
+                value: &effective_value,
+                category: category.as_deref(),
+                service: service.as_deref(),
+                notes: notes.as_deref(),
+                tags: &tags,
+                env: env.as_deref(),
+                storage_mode: storage_mode.as_deref(),
+                rotation_days,
+            })
+        }
 
         Commands::Delete { path } => commands::credentials::delete(&path),
 

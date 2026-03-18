@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/pwchiefy/memxp/main/scripts/install
 The installer will:
 1. Install **Claude Code** if you don't have it (includes Node.js and Homebrew if needed)
 2. Download and set up **memxp** with encrypted storage
-3. Connect memxp to Claude Code with permissions pre-approved
+3. Connect memxp to Claude Code (Claude will prompt per tool call; pass `--auto-approve` to pre-approve)
 4. Create your **project directory** (defaults to ~/Developer)
 5. Set up your **learning journal** so your agent improves over time
 

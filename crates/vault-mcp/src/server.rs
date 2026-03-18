@@ -154,12 +154,17 @@ impl VaultMcpServer {
         // Trust model: The local agent process is trusted. Passphrase availability
         // at startup (OS Keychain or VAULT_PASSPHRASE env var) proves machine-level
         // authorization. The MCP process authenticated by opening the encrypted DB.
-        // Operator mode can auto-promote without re-prompting — passphrase
-        // availability IS the authentication factor.
-        let startup_passphrase_available = vault_core::auth::resolve_passphrase_keychain_first()
-            .ok()
-            .flatten()
-            .is_some();
+        // Operator auto-promotion is opt-in: set VAULT_OPERATOR_AUTO_PROMOTE=1 to
+        // skip the password prompt when the passphrase is already available. Without
+        // this env var, the agent must always provide the password explicitly.
+        let auto_promote_enabled = std::env::var("VAULT_OPERATOR_AUTO_PROMOTE")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        let startup_passphrase_available = auto_promote_enabled
+            && vault_core::auth::resolve_passphrase_keychain_first()
+                .ok()
+                .flatten()
+                .is_some();
 
         let state = Arc::new(Mutex::new(VaultState {
             db,
@@ -846,7 +851,7 @@ impl VaultMcpServer {
 
     /// Enable or disable temporary operator mode for high-risk mutations.
     #[tool(
-        description = "Enable or disable temporary operator mode for high-risk mutations. Password is optional — omit it to auto-resolve from OS keychain or VAULT_PASSPHRASE env var."
+        description = "Enable or disable temporary operator mode for high-risk mutations. Password required unless VAULT_OPERATOR_AUTO_PROMOTE=1 is set."
     )]
     fn vault_operator_mode(
         &self,

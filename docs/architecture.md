@@ -353,8 +353,8 @@ The `vault-web` crate provides a localhost-only web dashboard built with Axum, s
 4. **TOTP (optional):** `POST /api/auth/totp/setup` generates a TOTP secret and otpauth URI. `POST /api/auth/totp/verify` validates a 6-digit code and creates a session.
 
 5. **Session management:**
-   - Session ID delivered via `Set-Cookie: vault_session=<uuid>; HttpOnly; SameSite=Strict; Path=/api; Max-Age=86400`
-   - Also accepted as `?session_id=<uuid>` query parameter (fallback)
+   - Session ID delivered exclusively via `Set-Cookie: vault_session=<uuid>; HttpOnly; SameSite=Strict; Path=/api; Max-Age=86400`
+   - No query-parameter fallback — cookie-only to prevent token leakage in URLs, Referer headers, and server logs
    - Idle timeout: 30 minutes
    - Max lifetime: 24 hours
    - `POST /api/auth/lock` invalidates all sessions

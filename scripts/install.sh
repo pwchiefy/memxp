@@ -11,7 +11,7 @@
 #
 # Usage:
 #   curl -fsSL https://memxp.dev/install | sh
-#   sh install.sh [--version v0.1.0] [--skip-claude]
+#   sh install.sh [--version v0.1.0] [--skip-claude] [--auto-approve]
 #
 # What this sets up:
 #   1. Claude Code (your AI partner, if not already installed)
@@ -26,7 +26,8 @@
 #   memxp is a single-user, machine-local tool. The local agent process
 #   (Claude Code MCP) is trusted. The passphrase in ~/.memxp/env (chmod 600)
 #   proves machine-level authorization — equivalent to SSH keys in ~/.ssh/.
-#   --no-auto-approve skips permission pre-approval for explicit consent.
+#   By default, Claude will prompt before each memxp tool call.
+#   --auto-approve pre-approves all memxp tools (skip per-call prompts).
 
 set -eu
 
@@ -44,14 +45,14 @@ else
   VAULT_DIR="$HOME/.memxp"
 fi
 SKIP_CLAUDE=0
-NO_AUTO_APPROVE=0
+AUTO_APPROVE=0
 
 # ── Parse arguments ───────────────────────────────────────────
 while [ $# -gt 0 ]; do
   case "$1" in
     --version)    VERSION="${2:-}"; shift 2 ;;
     --skip-claude) SKIP_CLAUDE=1; shift ;;
-    --no-auto-approve) NO_AUTO_APPROVE=1; shift ;;
+    --auto-approve) AUTO_APPROVE=1; shift ;;
     -h|--help)
       sed -n '2,/^$/s/^# //p' "$0"
       exit 0
@@ -395,8 +396,8 @@ if [ "$SKIP_CLAUDE" = "0" ] && [ -n "${CLAUDE_BIN:-}" ]; then
   "$CLAUDE_BIN" mcp add memxp -s user -- "$TARGET" mcp 2>/dev/null || true
   ok "Registered memxp with Claude Code"
 
-  # Pre-configure permissions so Claude can use memxp without prompting
-  if [ "$NO_AUTO_APPROVE" = "0" ]; then
+  # Pre-configure permissions only when explicitly requested
+  if [ "$AUTO_APPROVE" = "1" ]; then
     SETTINGS_DIR="$HOME/.claude"
     SETTINGS_FILE="$SETTINGS_DIR/settings.json"
     mkdir -p "$SETTINGS_DIR"
@@ -434,7 +435,7 @@ SETTINGS
     fi
     ok "Pre-approved memxp tools (no permission prompts)"
   else
-    info "Skipping auto-approve (--no-auto-approve). Claude will prompt for each tool."
+    info "Claude will prompt before each memxp tool call (pass --auto-approve to skip)"
   fi
 
 else

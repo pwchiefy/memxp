@@ -11,18 +11,18 @@ memxp is a 5-crate Rust workspace (plus an integration test crate) that provides
 
 ```
 +-----------------------------------------------------------------------------------+
-|                               memxp workspace                                    |
-|                                                                                   |
-|  +-------------+     +-------------+     +-------------+     +-------------+      |
-|  | vault-cli   |     | vault-mcp   |     | vault-web   |     | vault-sync  |      |
-|  | (binary)    |     | (MCP server)|     | (web GUI)   |     | (P2P daemon)|      |
-|  |             |     |             |     |             |     |             |      |
-|  | clap CLI    |     | rmcp stdio  |     | axum HTTP   |     | TLS+HMAC   |      |
-|  | 40+ cmds    |     | 37+ tools   |     | REST API    |     | TCP server  |      |
-|  +------+------+     +------+------+     +------+------+     +------+------+      |
+|                               memxp workspace                                      |
+|                                                                                    |
+|  +-------------+     +-------------+     +-------------+     +-------------+       |
+|  | vault-cli   |     | vault-mcp   |     | vault-web   |     | vault-sync  |       |
+|  | (binary)    |     | (MCP server)|     | (web GUI)   |     | (P2P daemon)|       |
+|  |             |     |             |     |             |     |             |       |
+|  | clap CLI    |     | rmcp stdio  |     | axum HTTP   |     | TLS+HMAC   |        | 
+|  | 40+ cmds    |     | 37+ tools   |     | REST API    |     | TCP server  |       |
+|  +------+------+     +------+------+     +------+------+     +------+------+       |
 |         |                   |                   |                   |              |
 |         +-------------------+-------------------+-------------------+              |
-|                             |                                                     |
+|                             |                                                      |
 |                    +--------+--------+                                             |
 |                    |   vault-core    |                                             |
 |                    |   (library)     |                                             |
@@ -35,15 +35,15 @@ memxp is a 5-crate Rust workspace (plus an integration test crate) that provides
 |                    | Config          |                                             |
 |                    | Models          |                                             |
 |                    +-----------------+                                             |
-|                             |                                                     |
-|              +--------------+--------------+                                      |
-|              |                             |                                      |
-|     +--------+--------+          +--------+--------+                              |
+|                             |                                                      |
+|              +--------------+--------------+                                       |
+|              |                             |                                       |
+|     +--------+--------+          +--------+--------+                               |
 |     | SQLCipher DB     |          | OS Keychain     |                              |
 |     | (AES-256-CBC)    |          | (macOS/Win/Lin) |                              |
 |     | + cr-sqlite CRDT |          +-----------------+                              |
-|     +-----------------+                                                           |
-|                                                                                   |
+|     +-----------------+                                                            |
+|                                                                                    |
 +-----------------------------------------------------------------------------------+
                     |                                      |
                     v                                      v

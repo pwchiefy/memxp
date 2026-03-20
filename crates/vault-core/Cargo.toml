@@ -12,14 +12,10 @@ chrono = { workspace = true }
 uuid = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-chacha20poly1305 = { workspace = true }
-argon2 = { workspace = true }
 sha2 = { workspace = true }
-rand = { workspace = true }
 keyring = { workspace = true }
 strsim = { workspace = true }
 dirs = { workspace = true }
-zeroize = { workspace = true }
 libc = { workspace = true }
 
 [dev-dependencies]

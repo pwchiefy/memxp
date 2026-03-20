@@ -28,7 +28,7 @@ memxp is a 5-crate Rust workspace (plus an integration test crate) that provides
 |                    |   (library)     |                                             |
 |                    |                 |                                             |
 |                    | CrSqliteDatabase|                                             |
-|                    | Crypto (XChaCha)|                                             |
+|                    | Crypto (SHA-256)|                                             |
 |                    | Auth / Keyring  |                                             |
 |                    | Conflicts       |                                             |
 |                    | AuditLogger     |                                             |

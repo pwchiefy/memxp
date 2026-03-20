@@ -33,9 +33,9 @@
 
 When the vault has many guides (50+), efficient navigation prevents wasted tool calls:
 
-1. **Start with hub guides for broad queries.** If you need something in a domain (VPS, Data Warehouse, UniFi), read the hub guide first — it's a routing table.
+1. **Start with hub guides for broad queries.** If you need something in a domain (VPS, analytics, cameras), read the hub guide first — it's a routing table.
    - `read_instructions("vps-operations")` → lists all VPS child guides
-   - `read_instructions("data-warehouse-agent-reference")` → lists all data pipeline guides
+   - `read_instructions("data-pipeline-reference")` → lists all data pipeline guides
 
 2. **Follow cross-reference headers.** Guide headers (blockquote at top) link to related guides and the domain hub. Read and follow these before searching.
 

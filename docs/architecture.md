@@ -554,7 +554,7 @@ These headers cost ~30 tokens but give agents immediate navigation context. When
 Hub guides serve as domain-level routing tables. They list child guides by category, enabling top-down navigation:
 
 - `vps-operations` — VPS infrastructure (~22 child guides)
-- `data-warehouse-agent-reference` — data lakehouse (~25 child guides)
+- `data-pipeline-reference` — data lakehouse (~25 child guides)
 - `unifi-protect-api-reference` — camera/network (~10 child guides)
 
 Agents start with `read_instructions("hub-name")` and drill into specific children -- typically 2 tool calls vs 5+ keyword searches.

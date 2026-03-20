@@ -164,8 +164,8 @@ Every guide should start with a blockquote header that links to related
 guides. This gives agents immediate context without reading the full guide:
 
 ```markdown
-> **Part of:** Data Warehouse Lakehouse · Hub: `data-warehouse-agent-reference`
-> **Related:** `sms-vault-setup`, `scheduling-vault-setup` · **People:** `staff-directory`
+> **Part of:** Data Warehouse · Hub: `data-pipeline-reference`
+> **Related:** `sms-service-setup`, `scheduling-service-setup` · **People:** `staff-directory`
 
 # My Guide Title
 
@@ -230,7 +230,7 @@ With the hint, it calls `vault_list(prefix="company/staff/")` once.
 
 Use `<service>-<action>` or `<domain>-<topic>`:
 - `vps-deploy`, `postgres-backup`, `caddy-ssl-renewal`
-- `team-contacts`, `data-warehouse-lakehouse-v2`, `messaging-app-setup`
+- `team-contacts`, `data-warehouse-v2`, `messaging-app-setup`
 
 Consistent naming makes `find_instructions()` more predictable.
 

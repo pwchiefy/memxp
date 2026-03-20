@@ -285,13 +285,13 @@ guides, backtracking, trying new terms. With the index, it reads
        v
   +------------------+         +------------------+
   |   Hub Guide      |         |   Hub Guide      |
-  |  vps-operations  |         | data-warehouse-ref    |
+  |  vps-operations  |         | data-pipelines   |
   |                  |         |                  |
   | Deploy:          |         | Sources:         |
-  |  • vps-docker    |         |  • crm-sync     |
-  |  • vps-nginx     |         |  • odbc-pipeline |
+  |  • vps-docker    |         |  • api-sync      |
+  |  • vps-nginx     |         |  • csv-import    |
   | Security:        |         | Schema:          |
-  |  • vps-firewall  |         |  • lakehouse-v2  |
+  |  • vps-firewall  |         |  • warehouse-v2  |
   +------------------+         +------------------+
        |                              |
        | Agent reads the one          |
@@ -299,7 +299,7 @@ guides, backtracking, trying new terms. With the index, it reads
        v                              v
   +------------------+         +------------------+
   |  Source Guide     |         |  Source Guide     |
-  | vps-docker-deploy|         | crm-sync         |
+  | vps-docker-deploy|         | api-sync          |
   |                  |         |                   |
   | Step-by-step     |         | Cron schedule,    |
   | deploy procedure |         | table mappings,   |

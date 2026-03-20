@@ -123,7 +123,7 @@ The primary data store is a SQLCipher-encrypted SQLite database at `~/.memxp/vau
 | `sync_audit` | Sync operation log (peer, direction, change count, duration, result) |
 | `sync_peers` | Peer version tracking (last_seen_version, last_known_addr) |
 | `sync_backlog` | Changes that could not be sent to a peer (table not supported) |
-| `agent_tasks_archive` | Archived legacy agent tasks (deprecated, migration-only) |
+| `agent_tasks_archive` | Archived legacy agent tasks (only exists on DBs upgraded from pre-0.2.0; not created on fresh installs) |
 
 ### cr-sqlite CRDT Integration
 

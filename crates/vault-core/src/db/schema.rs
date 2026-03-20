@@ -54,44 +54,6 @@ impl CrSqliteDatabase {
                 updated_at TEXT
             );
 
-            CREATE TABLE IF NOT EXISTS agent_tasks (
-                id TEXT PRIMARY KEY NOT NULL,
-                title TEXT NOT NULL DEFAULT '',
-                description TEXT DEFAULT '',
-                from_machine TEXT NOT NULL DEFAULT '',
-                to_machine TEXT NOT NULL DEFAULT '*',
-                status TEXT NOT NULL DEFAULT 'pending',
-                priority INTEGER NOT NULL DEFAULT 2,
-                tags TEXT DEFAULT '[]',
-                result TEXT DEFAULT '',
-                reply_to TEXT DEFAULT NULL,
-                claimed_by TEXT DEFAULT NULL,
-                created_at TEXT DEFAULT '',
-                updated_at TEXT DEFAULT '',
-                completed_at TEXT DEFAULT NULL,
-                read_at TEXT DEFAULT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS agent_tasks_archive (
-                id TEXT PRIMARY KEY NOT NULL,
-                title TEXT NOT NULL DEFAULT '',
-                description TEXT DEFAULT '',
-                from_machine TEXT NOT NULL DEFAULT '',
-                to_machine TEXT NOT NULL DEFAULT '*',
-                status TEXT NOT NULL DEFAULT 'pending',
-                priority INTEGER NOT NULL DEFAULT 2,
-                tags TEXT DEFAULT '[]',
-                result TEXT DEFAULT '',
-                reply_to TEXT DEFAULT NULL,
-                claimed_by TEXT DEFAULT NULL,
-                created_at TEXT DEFAULT '',
-                updated_at TEXT DEFAULT '',
-                completed_at TEXT DEFAULT NULL,
-                read_at TEXT DEFAULT NULL,
-                migrated_at TEXT NOT NULL DEFAULT '',
-                migration_version INTEGER NOT NULL DEFAULT 9
-            );
-
             CREATE TABLE IF NOT EXISTS file_transfers (
                 id TEXT PRIMARY KEY NOT NULL,
                 filename TEXT NOT NULL DEFAULT '',
@@ -351,14 +313,15 @@ impl CrSqliteDatabase {
         }
 
         if current < 6 {
-            // Add read_at to agent_tasks (matches Python schema)
-            self.ensure_column("agent_tasks", "read_at", "read_at TEXT DEFAULT NULL");
-            // Add completed_at if missing (column order may differ from Python)
-            self.ensure_column(
-                "agent_tasks",
-                "completed_at",
-                "completed_at TEXT DEFAULT NULL",
-            );
+            // Add read_at/completed_at to agent_tasks only if the legacy table exists
+            if self.table_exists("agent_tasks") {
+                self.ensure_column("agent_tasks", "read_at", "read_at TEXT DEFAULT NULL");
+                self.ensure_column(
+                    "agent_tasks",
+                    "completed_at",
+                    "completed_at TEXT DEFAULT NULL",
+                );
+            }
             // file_transfers and file_chunks tables are created in init_schema
             // (CREATE TABLE IF NOT EXISTS handles both fresh and existing DBs)
             self.set_schema_version(6)?;
@@ -408,14 +371,17 @@ impl CrSqliteDatabase {
         Ok(())
     }
 
-    /// Ensure the legacy `agent_tasks` table exists only for compatibility and does
-    /// not participate in active sync/runtime.
+    /// Migrate legacy `agent_tasks` rows into an archive table.
+    ///
+    /// The archive table is only created here (on-the-fly) when upgrading a DB
+    /// that actually has the legacy `agent_tasks` table. Fresh installs never
+    /// create either table.
     fn migrate_agent_tasks_to_archive(&self) -> DbResult<bool> {
         if self.has_agent_task_archive_migration() {
             return Ok(false);
         }
 
-        // Keep legacy table for read compatibility, but migrate rows for hardening.
+        // No legacy table → nothing to migrate.
         if !self.table_exists("agent_tasks") {
             self.set_meta(MIGRATION_AGENT_TASKS_ARCHIVE_KEY, "1")?;
             self.set_meta(MIGRATION_AGENT_TASKS_ARCHIVE_COUNT_KEY, "0")?;
@@ -433,6 +399,29 @@ impl CrSqliteDatabase {
                 "Migrating {count} legacy agent_tasks rows into agent_tasks_archive for compatibility.",
             );
         }
+
+        // Create the archive table on-the-fly (upgrade-only artifact).
+        self.conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS agent_tasks_archive (
+                id TEXT PRIMARY KEY NOT NULL,
+                title TEXT NOT NULL DEFAULT '',
+                description TEXT DEFAULT '',
+                from_machine TEXT NOT NULL DEFAULT '',
+                to_machine TEXT NOT NULL DEFAULT '*',
+                status TEXT NOT NULL DEFAULT 'pending',
+                priority INTEGER NOT NULL DEFAULT 2,
+                tags TEXT DEFAULT '[]',
+                result TEXT DEFAULT '',
+                reply_to TEXT DEFAULT NULL,
+                claimed_by TEXT DEFAULT NULL,
+                created_at TEXT DEFAULT '',
+                updated_at TEXT DEFAULT '',
+                completed_at TEXT DEFAULT NULL,
+                read_at TEXT DEFAULT NULL,
+                migrated_at TEXT NOT NULL DEFAULT '',
+                migration_version INTEGER NOT NULL DEFAULT 9
+            )",
+        )?;
 
         let insert_sql = format!(
             "INSERT OR IGNORE INTO {0} (
@@ -487,8 +476,6 @@ mod tests {
         assert!(tables.contains(&"vault_entries".to_string()));
         assert!(tables.contains(&"vault_guides".to_string()));
         assert!(tables.contains(&"vault_meta".to_string()));
-        assert!(tables.contains(&"agent_tasks".to_string()));
-        assert!(tables.contains(&"agent_tasks_archive".to_string()));
         assert!(tables.contains(&"sync_conflicts".to_string()));
         assert!(tables.contains(&"conflict_settings".to_string()));
 
@@ -496,6 +483,22 @@ mod tests {
         assert!(tables.contains(&"sync_audit".to_string()));
         assert!(tables.contains(&"sync_peers".to_string()));
         assert!(tables.contains(&"sync_backlog".to_string()));
+    }
+
+    #[test]
+    fn test_fresh_db_no_legacy_task_tables() {
+        let tmp = TempDir::new().unwrap();
+        let db = test_db(&tmp);
+
+        // Fresh installs must NOT create agent_tasks or agent_tasks_archive
+        assert!(
+            !db.table_exists("agent_tasks"),
+            "agent_tasks should not exist on fresh install"
+        );
+        assert!(
+            !db.table_exists("agent_tasks_archive"),
+            "agent_tasks_archive should not exist on fresh install"
+        );
     }
 
     #[test]

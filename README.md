@@ -266,10 +266,14 @@ it once at session start and knows exactly what to call.
 | Staff directory | `staff-contacts` |
 ```
 
-The agent sees this and calls `read_instructions("vps-operations")` directly --
-2 tool calls instead of 10 keyword searches. The routing index lives in Claude
-Code's auto-memory directory so it loads automatically, but the actual guides
-live in memxp where they're encrypted, searchable, and synced across machines.
+Without the index, the agent keyword-fishes: `find_instructions("deploy")`,
+`find_instructions("vps")`, `find_instructions("server")` -- reading the wrong
+guides, backtracking, trying new terms. With the index, it reads
+`read_instructions("vps-operations")` on the first call and navigates from there.
+
+The routing index lives in Claude Code's auto-memory directory so it loads
+automatically at session start. The actual guides live in memxp where they're
+encrypted, searchable, and synced across machines.
 
 ### Guides
 

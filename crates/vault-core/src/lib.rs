@@ -12,7 +12,6 @@ pub mod operator_session;
 pub mod query;
 pub mod rotation;
 pub mod security;
-mod tasks;
 
 // Re-exports for convenience
 pub use config::VaultConfig;

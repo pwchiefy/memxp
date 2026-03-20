@@ -1,43 +1,67 @@
 # memxp
 
-**A second brain for your coding agent.**
+**A memory upgrade for you and your coding agent.**
 
-Today's coding agents are spiky geniuses with periodic amnesia. memxp treats that condition and makes your agent a lot more useful.
+Today's coding agents are spiky geniuses with periodic amnesia. 
+memxp treats that condition and makes your agent a lot more useful.
 It gives your agent an encrypted, persistent record of what you work on, what works,
-what fails, and how to help -- so every session picks up where the last one left off.
+what fails, and how to help. General, familiar commands start to work with less confusion. 
+As you build it out, you and your agent will start speaking the same language. 
 
 ---
 
-## Get Started (2 minutes)
+## Get Started
 
-One command installs everything -- memxp, Claude Code (if you don't have it),
-encrypted storage, and the onboarding system. Nothing else to configure.
+### Step 1: Open Terminal
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/pwchiefy/memxp/main/scripts/install.sh | sh
+On a Mac, press **Cmd + Space**, type **Terminal**, and hit Enter. You'll see a window with a blinking cursor. That's where you'll paste the commands below.
+
+### Step 2: Install memxp
+
+Copy this entire line below and paste it into Terminal, then press Enter:
+
+```
+curl -fsSL https://raw.githubusercontent.com/pwchiefy/memxp/main/scripts/install.sh -o /tmp/install-memxp.sh && sh /tmp/install-memxp.sh
 ```
 
-The installer will:
-1. Install **Claude Code** if you don't have it (includes Node.js and Homebrew if needed)
+The installer will ask you a few questions and may ask for your Mac password (this is normal -- it needs it to install developer tools). It will:
+
+1. Install **Claude Code** -- your AI coding partner (includes Node.js and Homebrew if needed)
 2. Download and set up **memxp** with encrypted storage
-3. Connect memxp to Claude Code (Claude will prompt per tool call; pass `--auto-approve` to pre-approve)
-4. Create your **project directory** (defaults to ~/Developer)
-5. Set up your **learning journal** so your agent improves over time
+3. Create your **project directory** (defaults to ~/Developer)
+4. Set up your **learning journal** so your agent improves over time
 
-After install, open Terminal and run:
+> **Fresh Mac?** A macOS dialog may pop up asking to install "Command Line Developer Tools."
+> Click **Install** and wait for it to finish. The installer will continue automatically.
 
-```bash
-cd ~/Developer
-claude
+When it's done, it will show you a passphrase. **Save this in a password manager** -- you'll need it if you set up memxp on another computer.
+
+### Step 3: Start your first session
+
+Copy and paste this into a **new Terminal window**:
+
+```
+cd ~/Developer && claude
 ```
 
-Claude will introduce itself, ask a few questions about you and what you work on,
-and from there every session builds on the last. That's it.
+memxp is now connected to Claude. Things you can try:
+
+- *"Tell me about yourself so I can save it for next time"*
+- *"Save a guide on how I deploy my app to production"*
+- *"Remember my OpenAI API key: sk-..."*
+- *"What do you know about me?"*
+
+Just work on whatever you need -- Claude will remember what matters for next time.
 
 > **What can you use it for?** Coding projects, data analysis, personal finance,
 > planning, operations, learning -- anything where you'd benefit from an AI partner
 > that actually remembers your work. Your agent keeps track of what works, what
 > breaks, and how to do things right.
+> It is **not** magic or automatic - To get this to work well, you need to talk to your agent.
+> Ask questions. Check if things are stale - it should be a collaborative process.
+> You will have to get used to correcting your agent and asking questions like,
+> Why didn't you find the guide on how to format this memo, we have a guide in memxp?
+> If you get used to a lot of discussion and course correction, generally you should see good results. 
 
 ---
 
@@ -58,7 +82,7 @@ time. It keeps a record of what you work on, what works, what fails, and how to
 give each session the best shot at success. Never attempt a task alone again.
 
 - **Second brain** -- Guides, procedures, learnings, and credentials in one place
-- **Gets smarter** -- A learning journal tracks mistakes so they repeat LESS FREQUENTLY - it's not perfect 
+- **Gets smarter** -- A learning journal - Meditation.md - tracks mistakes so they repeat LESS FREQUENTLY - it's not perfect
 - **Encrypted** -- API keys, tokens, passwords -- AES-256 at rest
 - **Syncs everywhere** -- Automatic P2P replication across your machines
 - **Works with any agent** -- Claude Code, Cursor, Codex, Pi, OpenCode -- anything that speaks MCP
@@ -96,7 +120,7 @@ You may just want to use this on one dedicated machine for tinkering (adviseable
 
 But let's say you have a number of machines you use to segregate projects or usecases. 
 
-You can install memxp on each meachine and tell your agent to keep them in sync. It'll figure it out. 
+You can install memxp on each machine and tell your agent to keep them in sync. It'll figure it out. 
 
 Each machine maintains its own encrypted SQLite database. The sync daemon runs in the
 background and replicates changes using [cr-sqlite](https://github.com/vlcn-io/cr-sqlite)
@@ -107,6 +131,51 @@ internet. Tailscale is super easy to set up - ask your agent for help.
 Changes merge automatically. When two machines modify the same entry simultaneously,
 memxp resolves it via last-write-wins (LWW) or queues the conflict for manual review,
 depending on your per-path conflict policy.
+
+---
+
+## Use with Any Agent
+
+memxp works with **any tool that speaks MCP** -- not just Claude Code. If you use
+Cursor, Pi, Windsurf, Codex, OpenCode, or any other MCP-compatible agent, point it
+at the memxp binary:
+
+```json
+{
+  "mcpServers": {
+    "memxp": {
+      "command": "memxp",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+That's it. Your agent gets 37 tools for storing and retrieving knowledge, credentials,
+and guides. The exact config file location varies by tool -- check your agent's MCP
+documentation.
+
+### No agent? Use the CLI directly
+
+memxp is a standalone CLI. You don't need an AI agent at all -- you can use it as a
+personal encrypted credential manager and knowledge base from the terminal:
+
+```bash
+# Install
+cargo install --git https://github.com/pwchiefy/memxp.git memxp
+memxp init
+
+# Store and retrieve
+echo "sk-..." | memxp set openai/api/key - --service openai
+memxp get openai/api/key --clipboard
+
+# Save a procedure
+memxp guide add deploy-vps --file deploy.md --category runbook
+
+# Search everything
+memxp search "openai"
+memxp guide search "deploy"
+```
 
 ---
 
@@ -194,6 +263,16 @@ memxp guide verify deploy-production
 # Find stale guides (not verified in 90+ days)
 memxp guide stale --days 90
 ```
+
+### Meditation — Learning Journal
+
+`Meditation.md` is memxp's error log and learning journal. When your agent makes a
+mistake or discovers a better approach, it records what happened, why, and the rule
+to follow next time. Over time, a cleanup process consolidates these entries into
+actionable guides — so your agent literally learns from its failures.
+
+The installer creates `Meditation.md` in your project directory. Agents append to it
+at the end of every session.
 
 ### Session Context
 
@@ -289,12 +368,12 @@ will break if a secret changes.
 ## MCP Integration
 
 memxp includes a built-in [Model Context Protocol](https://modelcontextprotocol.io/)
-server with 37 tools. This lets AI agents like Claude Code interact with your
-knowledge base and credentials directly -- no shell wrappers or fragile parsing needed.
+server with 37 tools. Any MCP-compatible agent -- Claude Code, Cursor, Pi, Windsurf,
+Codex, OpenCode -- can use them directly. No shell wrappers or fragile parsing needed.
 
-### Setup with Claude Code
+### Setup
 
-Add to your `~/.mcp.json`:
+Add to your MCP config (`~/.mcp.json` for Claude Code, or your agent's equivalent):
 
 ```json
 {
@@ -307,7 +386,7 @@ Add to your `~/.mcp.json`:
 }
 ```
 
-Claude Code will automatically discover all 37 tools on startup.
+Your agent will automatically discover all 37 tools on startup.
 
 ### Example tool calls
 

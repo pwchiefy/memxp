@@ -502,6 +502,127 @@ mod tests {
     }
 
     #[test]
+    fn test_upgrade_migrates_agent_tasks_to_archive() {
+        let tmp = TempDir::new().unwrap();
+        let db_path = tmp.path().join("upgrade.db");
+
+        // Phase 1: Create a DB, inject legacy agent_tasks, and roll back to pre-v9.
+        {
+            let db = CrSqliteDatabase::open(&db_path, "test-passphrase", None).unwrap();
+
+            // Manually create legacy agent_tasks table (no longer in init_schema)
+            db.conn
+                .execute_batch(
+                    "CREATE TABLE agent_tasks (
+                        id TEXT PRIMARY KEY NOT NULL,
+                        title TEXT NOT NULL DEFAULT '',
+                        description TEXT DEFAULT '',
+                        from_machine TEXT NOT NULL DEFAULT '',
+                        to_machine TEXT NOT NULL DEFAULT '*',
+                        status TEXT NOT NULL DEFAULT 'pending',
+                        priority INTEGER NOT NULL DEFAULT 2,
+                        tags TEXT DEFAULT '[]',
+                        result TEXT DEFAULT '',
+                        reply_to TEXT DEFAULT NULL,
+                        claimed_by TEXT DEFAULT NULL,
+                        created_at TEXT DEFAULT '',
+                        updated_at TEXT DEFAULT '',
+                        completed_at TEXT DEFAULT NULL,
+                        read_at TEXT DEFAULT NULL
+                    )",
+                )
+                .unwrap();
+
+            // Insert 2 legacy rows
+            db.conn
+                .execute(
+                    "INSERT INTO agent_tasks (id, title, from_machine, created_at, updated_at)
+                     VALUES ('task-001', 'Legacy task 1', '100.1.1.1', '2025-01-01', '2025-01-01')",
+                    [],
+                )
+                .unwrap();
+            db.conn
+                .execute(
+                    "INSERT INTO agent_tasks (id, title, from_machine, created_at, updated_at)
+                     VALUES ('task-002', 'Legacy task 2', '100.2.2.2', '2025-02-01', '2025-02-01')",
+                    [],
+                )
+                .unwrap();
+
+            // Roll back schema version to 8 (pre-migration) and clear migration flags
+            db.conn
+                .execute(
+                    "UPDATE vault_meta SET value = '8' WHERE key = 'schema_version'",
+                    [],
+                )
+                .unwrap();
+            db.conn
+                .execute(
+                    "DELETE FROM vault_meta WHERE key IN (
+                        'agent_tasks_archive_migrated',
+                        'agent_tasks_archive_migrated_row_count',
+                        'agent_tasks_archive_migration_notice'
+                    )",
+                    [],
+                )
+                .unwrap();
+
+            // Drop agent_tasks_archive if it exists (clean slate for migration)
+            db.conn
+                .execute_batch("DROP TABLE IF EXISTS agent_tasks_archive")
+                .unwrap();
+        }
+
+        // Phase 2: Reopen — migration should fire.
+        {
+            let db = CrSqliteDatabase::open(&db_path, "test-passphrase", None).unwrap();
+
+            // agent_tasks_archive must now exist
+            assert!(
+                db.table_exists("agent_tasks_archive"),
+                "archive table should be created during upgrade migration"
+            );
+
+            // Verify both rows were archived
+            let count: i64 = db
+                .conn
+                .query_row(
+                    "SELECT COUNT(*) FROM agent_tasks_archive",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(count, 2, "both legacy rows should be archived");
+
+            // Verify migration metadata
+            assert_eq!(db.agent_task_archive_row_count(), 2);
+            assert!(db.has_agent_task_archive_migration());
+
+            // Verify the notice was set for display
+            let notice: String = db
+                .conn
+                .query_row(
+                    "SELECT value FROM vault_meta WHERE key = 'agent_tasks_archive_migration_notice'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(notice, "1", "migration notice should be pending");
+
+            // Verify specific row data survived
+            let title: String = db
+                .conn
+                .query_row(
+                    "SELECT title FROM agent_tasks_archive WHERE id = 'task-001'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(title, "Legacy task 1");
+        }
+    }
+
+    #[test]
     fn test_schema_migration_v1_to_v5() {
         let tmp = TempDir::new().unwrap();
         let db = test_db(&tmp);

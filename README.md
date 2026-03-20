@@ -72,7 +72,13 @@ Just work on whatever you need -- Claude will remember what matters for next tim
 Lots of Agentic workflow tutorials tell you to create markdown files: `CLAUDE.md`, `.cursorrules`, `AGENTS.md`.
 You maintain them by hand. They drift across machines. They go stale.
 Switch tools and you start over. Your agent asks the same questions every session.
-If you really get into using these files to guide your Agent's work and you are non-technical, this will get messy quickly. 
+If you really get into using these files to guide your Agent's work and you are non-technical, this will get messy quickly.
+
+Tools like Claude Code have a built-in memory system (`CLAUDE.md` + auto-memory), but it's:
+- **Machine-local** -- your laptop and your server don't share context
+- **Automatic and opaque** -- Claude decides what to save; you can't search, organize, or sync it
+- **Not encrypted** -- plain markdown files on disk; no place for API keys or passwords
+- **Single-agent** -- only works with Claude Code, not Cursor, Pi, Codex, or other tools
 
 ### The Solution
 
@@ -239,6 +245,31 @@ memxp is persistent memory for AI coding agents. Guides are Markdown documents
 stored inside the encrypted database, synced across all machines, and accessible
 via both CLI and MCP. Agents read them, follow them, and write improved versions
 back -- building institutional knowledge that compounds over time.
+
+### The Routing Index Pattern
+
+As your knowledge base grows, keyword search alone gets slow -- the agent wastes
+tool calls guessing search terms. memxp solves this with a **routing index**: a
+concise file (under 200 lines) that maps topics to guide names. The agent reads
+it once at session start and knows exactly what to call.
+
+```markdown
+## Projects
+| Project | Guide |
+|---------|-------|
+| VPS deployment | `vps-operations` |
+| Database backups | `postgres-backup` |
+
+## People
+| Who | Guide |
+|-----|-------|
+| Staff directory | `staff-contacts` |
+```
+
+The agent sees this and calls `read_instructions("vps-operations")` directly --
+2 tool calls instead of 10 keyword searches. The routing index lives in Claude
+Code's auto-memory directory so it loads automatically, but the actual guides
+live in memxp where they're encrypted, searchable, and synced across machines.
 
 ### Guides
 

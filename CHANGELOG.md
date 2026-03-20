@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-03-18
+
+Security hardening release. All defaults flipped to secure-by-default.
+No breaking API changes; behavioral changes require explicit opt-in via
+environment variables or flags.
+
+### Changed
+
+#### Security: Secure-by-Default
+- **Installer no longer pre-approves MCP tools.** Claude will prompt before each memxp tool call. Pass `--auto-approve` to opt in to the previous behavior. The old `--no-auto-approve` flag has been removed.
+- **Operator auto-promotion disabled by default.** `vault_operator_mode` now requires an explicit password unless `VAULT_OPERATOR_AUTO_PROMOTE=1` is set in the environment. Previously, operator mode silently auto-promoted when the passphrase was available at startup.
+- **Daemon-guard TLS default flipped to secure.** Guard scripts now default to TLS verification enabled (`INSECURE_TLS="false"`). Existing deployments with `insecure_skip_tls_verify: true` in config.yaml are unaffected — the guard reads the config.
+
+#### Web Dashboard: Cookie-Only Auth
+- Removed `session_id` from all JSON response bodies (register, login, TOTP verify)
+- Removed `AuthQuery` struct and query-parameter session fallback from all 14 protected endpoints
+- Frontend (`app.js`) switched to `credentials: 'same-origin'` with status-based auth checks
+- Session delivery is now exclusively via `Set-Cookie: vault_session=...; HttpOnly; SameSite=Strict`
+
+#### CLI
+- `memxp set` now accepts `-` as value to read from stdin, avoiding shell history exposure. Example: `echo "secret" | memxp set path/to/key -`
+
+#### Installer
+- Removed plaintext passphrase backup file from `~/Desktop/memxp-passphrase.txt`. Passphrase is now shown in terminal only during install, with guidance to save it in a password manager.
+- Added trust model documentation in installer header comments
+
+#### MCP Server
+- Operator mode audit log now tracks promotion method (`password` vs `startup_passphrase_auto`)
+- Added trust model documentation in `server.rs`
+
+### Fixed
+
+#### Documentation Accuracy
+- Fixed "mutual TLS" claim in README — now accurately says "TLS" with note about no client certificate authentication
+- Fixed "zero plaintext" claim in README — removed overstated guarantee
+- Fixed "encrypted JSON" export description in architecture docs — now says "plaintext JSON — encrypt externally"
+- Added security note in examples docs recommending `gpg` encryption for vault exports
+- Added Tailscale as primary transport security layer in README security section
+- Fixed stale query-param session fallback documentation in architecture.md
+- Fixed stale comment in `server.rs` route registration
+
+#### Credential Store
+- `CredentialStore` now surfaces keychain resolution warnings in bulk paths
+- Restricted raw DB access to prevent bypassing keychain safety checks
+
+### Security
+
+- Web auth tokens no longer leak via URL query parameters, Referer headers, browser history, or server access logs
+- Operator mode promotion method is now auditable (password vs auto-promote)
+- CI workflow includes `cargo fmt --check`, `cargo clippy -D warnings`, and `cargo test` across macOS, Linux, and Windows
+- Added `cargo audit` to dependency checking workflow
+
 ## [0.1.0] - 2026-03-03
 
 Initial public release of memxp, a local-first encrypted knowledge base and
@@ -107,4 +159,5 @@ credential store for AI coding agents.
 - Platform keyring storage option (macOS Keychain)
 - Generated passphrases only shown with explicit `--print-passphrase` flag
 
+[0.2.0]: https://github.com/pwchiefy/memxp/releases/tag/v0.2.0
 [0.1.0]: https://github.com/pwchiefy/memxp/releases/tag/v0.1.0

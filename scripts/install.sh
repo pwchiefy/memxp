@@ -9,9 +9,13 @@
 # of what makes your work unique — what works, what fails, and how
 # to give each session the best shot at success.
 #
-# Usage:
-#   curl -fsSL https://memxp.dev/install | sh
-#   sh install.sh [--version v0.1.0] [--skip-claude] [--auto-approve]
+# Usage (download then run — so sudo and prompts work):
+#   curl -fsSL https://raw.githubusercontent.com/pwchiefy/memxp/main/scripts/install.sh -o /tmp/install-memxp.sh && sh /tmp/install-memxp.sh
+#
+# Options:
+#   --version v0.1.0    Install a specific version
+#   --skip-claude       Don't install Claude Code
+#   --auto-approve      Pre-approve memxp MCP tools (skip per-call prompts)
 #
 # What this sets up:
 #   1. Claude Code (your AI partner, if not already installed)
@@ -30,6 +34,33 @@
 #   --auto-approve pre-approves all memxp tools (skip per-call prompts).
 
 set -eu
+
+# ── Interactive detection ─────────────────────────────────────
+# When piped (curl | sh), stdin is consumed by the script content.
+# We detect this and use /dev/tty for user prompts, which connects
+# to the actual terminal even when stdin is a pipe.
+# If /dev/tty isn't available (e.g., CI), fall back to defaults.
+HAS_TTY=0
+if [ -e /dev/tty ]; then
+  HAS_TTY=1
+fi
+
+# prompt_user PROMPT DEFAULT — prints prompt, reads from /dev/tty, echoes result to stderr
+# Caller captures the value via: result=$(prompt_user "prompt" "default")
+# All display goes to stderr so it doesn't contaminate the captured value.
+prompt_user() {
+  if [ "$HAS_TTY" = "1" ]; then
+    printf "%s" "$1" >&2
+    read -r REPLY < /dev/tty || REPLY=""
+    if [ -n "$REPLY" ]; then
+      printf "%s" "$REPLY"
+    else
+      printf "%s" "$2"
+    fi
+  else
+    printf "%s" "$2"
+  fi
+}
 
 # ── Configuration ──────────────────────────────────────────────
 REPO_OWNER="pwchiefy"
@@ -121,6 +152,45 @@ esac
 ok "Detected $OS ($ARCH)"
 
 # ── Check for Claude Code ─────────────────────────────────────
+install_node_macos() {
+  # Download and install Node.js via the official .pkg — no Homebrew needed
+  step "Installing Node.js..."
+  NODE_VER="22"
+  if [ "$ARCH" = "arm64" ]; then
+    NODE_PKG="node-v${NODE_VER}.14.0-darwin-arm64.tar.gz"
+    NODE_URL="https://nodejs.org/dist/v${NODE_VER}.14.0/${NODE_PKG}"
+  else
+    NODE_PKG="node-v${NODE_VER}.14.0-darwin-x64.tar.gz"
+    NODE_URL="https://nodejs.org/dist/v${NODE_VER}.14.0/${NODE_PKG}"
+  fi
+
+  NODE_TMP="$(mktemp -d)"
+  if ! curl -fsSL "$NODE_URL" -o "$NODE_TMP/$NODE_PKG"; then
+    warn "Could not download Node.js."
+    rm -rf "$NODE_TMP"
+    return 1
+  fi
+
+  tar -xzf "$NODE_TMP/$NODE_PKG" -C "$NODE_TMP"
+  NODE_DIR="$(ls -d "$NODE_TMP"/node-v* 2>/dev/null | head -1)"
+
+  # Install to ~/.local (no admin needed)
+  mkdir -p "$HOME/.local/bin" "$HOME/.local/lib" "$HOME/.local/include"
+  cp -f "$NODE_DIR/bin/node" "$HOME/.local/bin/"
+  cp -rf "$NODE_DIR/lib/node_modules" "$HOME/.local/lib/"
+  ln -sf "../lib/node_modules/npm/bin/npm-cli.js" "$HOME/.local/bin/npm"
+  ln -sf "../lib/node_modules/npm/bin/npx-cli.js" "$HOME/.local/bin/npx"
+  rm -rf "$NODE_TMP"
+
+  # Verify
+  if "$HOME/.local/bin/node" --version >/dev/null 2>&1; then
+    ok "Node.js $("$HOME/.local/bin/node" --version) installed to ~/.local/bin"
+  else
+    warn "Node.js install failed."
+    return 1
+  fi
+}
+
 install_claude_code() {
   step "Installing Claude Code..."
 
@@ -129,43 +199,33 @@ install_claude_code() {
     # Check for Node.js without npm (unlikely but possible)
     if command -v node >/dev/null 2>&1; then
       warn "Node.js found but npm is missing"
-      printf "  Please install npm and try again.\n"
-      exit 1
+      return 1
     fi
 
-    # macOS: use Homebrew
+    # macOS: install Node.js directly (no Homebrew needed)
     if [ "$OS" = "Darwin" ]; then
-      if ! command -v brew >/dev/null 2>&1; then
-        step "Installing Homebrew (macOS package manager)..."
-        info "This is a standard tool used by most Mac developers."
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-        # Add Homebrew to PATH for this session
-        if [ -f /opt/homebrew/bin/brew ]; then
-          eval "$(/opt/homebrew/bin/brew shellenv)"
-        elif [ -f /usr/local/bin/brew ]; then
-          eval "$(/usr/local/bin/brew shellenv)"
-        fi
-        ok "Homebrew installed"
+      if ! install_node_macos; then
+        warn "Skipping Claude Code install."
+        return 1
       fi
-
-      step "Installing Node.js..."
-      brew install node 2>/dev/null
-      ok "Node.js installed"
 
     # Linux: use package manager
     elif [ "$OS" = "Linux" ]; then
       if command -v apt-get >/dev/null 2>&1; then
         step "Installing Node.js via apt..."
-        sudo apt-get update -qq && sudo apt-get install -y -qq nodejs npm
+        if ! (sudo apt-get update -qq && sudo apt-get install -y -qq nodejs npm); then
+          warn "Node.js install failed. Skipping Claude Code."
+          return 1
+        fi
       elif command -v dnf >/dev/null 2>&1; then
         step "Installing Node.js via dnf..."
-        sudo dnf install -y nodejs npm
+        if ! sudo dnf install -y nodejs npm; then
+          warn "Node.js install failed. Skipping Claude Code."
+          return 1
+        fi
       else
-        warn "Could not install Node.js automatically."
-        printf "  Please install Node.js 18+ and try again.\n"
-        printf "  https://nodejs.org/en/download\n"
-        exit 1
+        warn "Could not install Node.js automatically. Skipping Claude Code."
+        return 1
       fi
       ok "Node.js installed"
     fi
@@ -175,12 +235,18 @@ install_claude_code() {
   NODE_VERSION="$(node --version 2>/dev/null | sed 's/v//' | cut -d. -f1)"
   if [ -n "$NODE_VERSION" ] && [ "$NODE_VERSION" -lt 18 ] 2>/dev/null; then
     warn "Node.js 18+ required (found v$NODE_VERSION)"
-    printf "  Update Node.js: brew upgrade node (macOS) or see nodejs.org\n"
-    exit 1
+    return 1
   fi
 
-  npm install -g @anthropic-ai/claude-code 2>/dev/null
-  ok "Claude Code installed"
+  step "Installing Claude Code (this may take a minute)..."
+  if npm install -g @anthropic-ai/claude-code 2>/dev/null; then
+    ok "Claude Code installed"
+  else
+    # npm global install may fail without sudo — try with user prefix
+    info "Retrying with user-local install..."
+    npm install -g --prefix "$HOME/.local" @anthropic-ai/claude-code 2>/dev/null
+    ok "Claude Code installed"
+  fi
 
   printf "\n"
   info "You'll need to sign in the first time you run Claude Code."
@@ -214,8 +280,7 @@ if [ "$SKIP_CLAUDE" = "0" ]; then
     printf "  It's your AI coding partner — memxp gives it a brain\n"
     printf "  that persists between conversations.\n"
     printf "\n"
-    ask "Install Claude Code now? (Y/n): "
-    read -r answer
+    answer="$(prompt_user "  ? Install Claude Code now? (Y/n): " "Y")"
     case "$answer" in
       n|N|no|No)
         warn "Skipping Claude Code install."
@@ -223,8 +288,17 @@ if [ "$SKIP_CLAUDE" = "0" ]; then
         SKIP_CLAUDE=1
         ;;
       *)
-        install_claude_code
-        CLAUDE_BIN="$(command -v claude 2>/dev/null || echo "")"
+        install_claude_code || true
+        # Find claude — may be in ~/.local/bin or npm global bin
+        CLAUDE_BIN=""
+        for p in "$HOME/.local/bin/claude" "$HOME/.local/lib/node_modules/.bin/claude" \
+                 /opt/homebrew/bin/claude /usr/local/bin/claude; do
+          if [ -x "$p" ]; then
+            CLAUDE_BIN="$p"
+            break
+          fi
+        done
+        [ -z "$CLAUDE_BIN" ] && CLAUDE_BIN="$(command -v claude 2>/dev/null || echo "")"
         ;;
     esac
   fi
@@ -236,9 +310,7 @@ printf "\n"
 printf "  Where do you keep your projects? This is your home base\n"
 printf "  — where you and Claude will work together.\n"
 printf "\n"
-ask "Directory (Enter for $DEV_DEFAULT): "
-read -r dev_dir
-dev_dir="${dev_dir:-$DEV_DEFAULT}"
+dev_dir="$(prompt_user "  ? Directory (Enter for $DEV_DEFAULT): " "$DEV_DEFAULT")"
 
 # Expand ~ if they typed it
 case "$dev_dir" in
@@ -282,9 +354,12 @@ step "Downloading memxp..."
 
 # Determine version
 if [ -z "$VERSION" ]; then
-  VERSION="$(curl -fsSL -H "Accept: application/vnd.github+json" \
-    "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest" 2>/dev/null \
-    | python3 -c "import json,sys; print(json.load(sys.stdin).get('tag_name','').lstrip('v'))" 2>/dev/null || echo "")"
+  RELEASE_JSON="$(curl -fsSL -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest" 2>/dev/null || echo "")"
+  if [ -n "$RELEASE_JSON" ]; then
+    # Try grep+sed (works on both BSD and GNU)
+    VERSION="$(echo "$RELEASE_JSON" | grep '"tag_name"' | sed 's/.*"tag_name"[^"]*"\([^"]*\)".*/\1/' | sed 's/^v//' | head -1)"
+  fi
 fi
 
 if [ -z "$VERSION" ]; then
@@ -361,8 +436,9 @@ else
   ok "Passphrase stored in ~/.memxp/env (chmod 600)"
 fi
 
-# Source passphrase for this session
+# Source passphrase for this session and export so child processes see it
 . "$VAULT_DIR/env" 2>/dev/null || true
+export VAULT_PASSPHRASE
 
 # Ensure shell profile sources the env file
 if [ -f "$SHELL_PROFILE" ]; then
@@ -385,16 +461,65 @@ CONF
 fi
 
 # Initialize the database (create vault.db)
-"$TARGET" status >/dev/null 2>&1 || true
-ok "Encrypted database ready"
+if "$TARGET" init 2>&1 | grep -qi "initialized\|already"; then
+  ok "Encrypted database ready"
+else
+  # init may print warnings but still succeed — check if vault.db exists
+  if [ -f "$VAULT_DIR/vault.db" ]; then
+    ok "Encrypted database ready"
+  else
+    warn "Database initialization may have failed — run 'memxp init' manually"
+  fi
+fi
 
 # ── Register with Claude Code ──────────────────────────────────
 if [ "$SKIP_CLAUDE" = "0" ] && [ -n "${CLAUDE_BIN:-}" ]; then
   step "Connecting to Claude Code..."
 
-  # Register MCP server (user scope — available in all projects)
-  "$CLAUDE_BIN" mcp add memxp -s user -- "$TARGET" mcp 2>/dev/null || true
-  ok "Registered memxp with Claude Code"
+  # Register MCP server with passphrase so it can decrypt the vault.
+  # `claude mcp add -s user` writes to ~/.mcp.json. We write directly
+  # to ensure the VAULT_PASSPHRASE env var is included.
+  CLAUDE_JSON="$HOME/.mcp.json"
+  VAULT_PASS="${VAULT_PASSPHRASE:-}"
+  if [ -z "$VAULT_PASS" ]; then
+    VAULT_PASS="$(. "$VAULT_DIR/env" 2>/dev/null && echo "$VAULT_PASSPHRASE")"
+  fi
+
+  # Build the MCP server entry with env var
+  if command -v python3 >/dev/null 2>&1 && [ -n "$VAULT_PASS" ]; then
+    python3 -c "
+import json, os, sys
+path = '$CLAUDE_JSON'
+try:
+    with open(path, 'r') as f:
+        config = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    config = {}
+
+servers = config.setdefault('mcpServers', {})
+servers['memxp'] = {
+    'type': 'stdio',
+    'command': '$TARGET',
+    'args': ['mcp'],
+    'env': {
+        'VAULT_PASSPHRASE': '$VAULT_PASS'
+    }
+}
+
+with open(path, 'w') as f:
+    json.dump(config, f, indent=2)
+    f.write('\n')
+" 2>/dev/null && ok "Registered memxp with Claude Code (with passphrase)" || {
+      # Fallback to claude mcp add without env
+      "$CLAUDE_BIN" mcp add memxp -s user -- "$TARGET" mcp 2>/dev/null || true
+      ok "Registered memxp with Claude Code"
+      warn "Passphrase not passed to MCP server — you may need to run:"
+      info "  source ~/.memxp/env before starting claude"
+    }
+  else
+    "$CLAUDE_BIN" mcp add memxp -s user -- "$TARGET" mcp 2>/dev/null || true
+    ok "Registered memxp with Claude Code"
+  fi
 
   # Pre-configure permissions only when explicitly requested
   if [ "$AUTO_APPROVE" = "1" ]; then
@@ -603,26 +728,90 @@ MEDITATION
   ok "Learning journal created at $dev_dir/Meditation.md"
 fi
 
+# ── Ensure CLAUDE.md includes memxp instructions ──────────────
+CLAUDE_MD="$dev_dir/CLAUDE.md"
+MEMXP_BLOCK='## memxp — Second Brain
+
+You have a second brain called memxp. It remembers things between conversations.
+Always check it before asking the user for information you might already have.
+
+### How to use it
+- `whats_saved()` — see everything in memory
+- `find(query)` / `recall(path)` — look things up
+- `remember(path, value)` — save credentials, notes, or any info
+- `save_instructions(name, content)` — save a guide, procedure, or reference
+- `read_instructions(name)` — read a saved guide
+- `find_instructions(query)` — search guides
+
+### What to save
+- When the user tells you about themselves, save it as a guide (e.g. "user-profile")
+- When you figure out a procedure, save it as a guide so you remember next time
+- When the user gives you a credential, save it with remember()
+- At the end of each session, persist anything new you learned'
+
+if [ -f "$CLAUDE_MD" ]; then
+  # Existing CLAUDE.md — append memxp section if not already present
+  if ! grep -q 'memxp' "$CLAUDE_MD" 2>/dev/null; then
+    printf '\n\n%s\n' "$MEMXP_BLOCK" >> "$CLAUDE_MD"
+    ok "Added memxp instructions to existing CLAUDE.md"
+  else
+    info "CLAUDE.md already mentions memxp — skipping"
+  fi
+else
+  # No CLAUDE.md — create one
+  cat > "$CLAUDE_MD" <<CLAUDEMD
+# Instructions for Claude
+
+$MEMXP_BLOCK
+CLAUDEMD
+  ok "Created CLAUDE.md (Claude reads this at session start)"
+fi
+
 # ── Done ───────────────────────────────────────────────────────
 printf "\n"
 printf "  ${GREEN}${BOLD}Your second brain is ready.${NC}\n"
 printf "\n"
-printf "  ${BOLD}To start:${NC}\n"
-printf "\n"
-printf "    cd %s\n" "$dev_dir"
-printf "    claude\n"
-printf "\n"
-printf "  Claude will introduce itself and ask a few questions\n"
-printf "  to learn about you and what you work on. From there,\n"
-printf "  every session builds on the last.\n"
-printf "\n"
 
-if [ "$SKIP_CLAUDE" = "0" ] && [ -z "${CLAUDE_BIN:-}" ]; then
-  printf "  ${YELLOW}First:${NC} Install Claude Code:\n"
-  printf "    npm install -g @anthropic-ai/claude-code\n"
-  printf "    claude mcp add memxp -s user -- %s mcp\n" "$TARGET"
+if [ -n "${CLAUDE_BIN:-}" ]; then
+  # Claude Code is installed and memxp is registered — ready to go
+  printf "  ${BOLD}What to do now:${NC}\n"
   printf "\n"
+  printf "  1. Close this Terminal window\n"
+  printf "  2. Open a ${BOLD}new Terminal window${NC}\n"
+  printf "  3. Copy and paste this:\n"
+  printf "\n"
+  printf "     ${BOLD}cd %s && claude${NC}\n" "$dev_dir"
+  printf "\n"
+  printf "  memxp is now connected to Claude. Things you can try:\n"
+  printf "\n"
+  printf "  ${DIM}  \"Tell me about yourself so I can save it for next time\"${NC}\n"
+  printf "  ${DIM}  \"Save a guide on how I deploy my app to production\"${NC}\n"
+  printf "  ${DIM}  \"Remember my OpenAI API key: sk-...\"${NC}\n"
+  printf "  ${DIM}  \"What do you know about me?\"${NC}\n"
+  printf "\n"
+  printf "  Just work on whatever you need — Claude will remember\n"
+  printf "  what matters for next time.\n"
+else
+  # memxp is installed but Claude Code is not
+  printf "  memxp is installed and working.\n"
+  printf "\n"
+  printf "  ${YELLOW}Claude Code could not be installed automatically.${NC}\n"
+  printf "  This is usually a permissions issue. Try this:\n"
+  printf "\n"
+  printf "  1. Close this Terminal window\n"
+  printf "  2. Open a ${BOLD}new Terminal window${NC}\n"
+  printf "  3. Copy and paste these lines ${BOLD}one at a time${NC}:\n"
+  printf "\n"
+  printf "     ${BOLD}npm install -g @anthropic-ai/claude-code${NC}\n"
+  printf "     ${BOLD}claude mcp add memxp -s user -- %s mcp${NC}\n" "$TARGET"
+  printf "     ${BOLD}cd %s && claude${NC}\n" "$dev_dir"
+  printf "\n"
+  printf "  Then just tell Claude what you need — it will remember for next time.\n"
+  printf "\n"
+  printf "  If 'npm' is not found, run the installer again from\n"
+  printf "  an admin account, or visit: https://nodejs.org\n"
 fi
 
+printf "\n"
 printf "  ${DIM}Passphrase stored in ~/.memxp/env (chmod 600)${NC}\n"
 printf "\n"

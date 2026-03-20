@@ -271,6 +271,59 @@ Without the index, the agent keyword-fishes: `find_instructions("deploy")`,
 guides, backtracking, trying new terms. With the index, it reads
 `read_instructions("vps-operations")` on the first call and navigates from there.
 
+```
+  Session Start
+       |
+       v
+  +------------------+
+  |   MEMORY.md      |  Loaded automatically (< 200 lines)
+  |   Routing Index  |  Maps topics → hub guide names
+  +------------------+
+       |
+       | Agent sees: "VPS → vps-operations"
+       | 1 lookup, no searching
+       v
+  +------------------+         +------------------+
+  |   Hub Guide      |         |   Hub Guide      |
+  |  vps-operations  |         | data-warehouse-ref    |
+  |                  |         |                  |
+  | Deploy:          |         | Sources:         |
+  |  • vps-docker    |         |  • crm-sync     |
+  |  • vps-nginx     |         |  • odbc-pipeline |
+  | Security:        |         | Schema:          |
+  |  • vps-firewall  |         |  • lakehouse-v2  |
+  +------------------+         +------------------+
+       |                              |
+       | Agent reads the one          |
+       | it needs                     |
+       v                              v
+  +------------------+         +------------------+
+  |  Source Guide     |         |  Source Guide     |
+  | vps-docker-deploy|         | crm-sync         |
+  |                  |         |                   |
+  | Step-by-step     |         | Cron schedule,    |
+  | deploy procedure |         | table mappings,   |
+  | with credentials |         | error handling    |
+  | refs: recall()   |         | refs: recall()    |
+  +------------------+         +------------------+
+       |                              |
+       v                              v
+  +-------------------------------------------+
+  |          memxp Encrypted Vault             |
+  |                                            |
+  |  Credentials    Guides      Audit Log      |
+  |  (AES-256)     (Markdown)   (every access) |
+  |                                            |
+  |  Synced across all machines via P2P        |
+  +-------------------------------------------+
+```
+
+**Three levels, each more specific:**
+
+1. **Routing Index** (MEMORY.md) -- loaded at session start, never searched. The agent already knows where to go.
+2. **Hub Guides** -- domain indexes that list child guides by category. One read gives the agent a menu of everything in that domain.
+3. **Source Guides** -- the actual procedures, runbooks, and references. Include inline vault hints (`recall("postgres/prod/url")`) so the agent knows exactly which credentials to fetch.
+
 The routing index lives in Claude Code's auto-memory directory so it loads
 automatically at session start. The actual guides live in memxp where they're
 encrypted, searchable, and synced across machines.

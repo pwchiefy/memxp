@@ -19,9 +19,7 @@ pub fn doctor() -> anyhow::Result<()> {
     // ── 1. Database ──────────────────────────────────────────
     let db_path = config::db_path();
     if db_path.exists() {
-        let size = std::fs::metadata(&db_path)
-            .map(|m| m.len())
-            .unwrap_or(0);
+        let size = std::fs::metadata(&db_path).map(|m| m.len()).unwrap_or(0);
         let size_str = if size > 1_048_576 {
             format!("{:.1} MB", size as f64 / 1_048_576.0)
         } else {
@@ -228,10 +226,7 @@ fn try_open_db() -> anyhow::Result<(usize, usize)> {
 
 /// Find the Claude Code binary.
 fn find_claude_binary() -> Option<String> {
-    let candidates = [
-        "/opt/homebrew/bin/claude",
-        "/usr/local/bin/claude",
-    ];
+    let candidates = ["/opt/homebrew/bin/claude", "/usr/local/bin/claude"];
 
     for path in candidates {
         if Path::new(path).exists() {

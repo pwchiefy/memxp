@@ -472,7 +472,10 @@ mod tests {
 
         let listed = store.list(None, None, None).unwrap();
         assert_eq!(listed.len(), 1);
-        assert!(listed[0].value.is_empty(), "values must be stripped on list");
+        assert!(
+            listed[0].value.is_empty(),
+            "values must be stripped on list"
+        );
     }
 
     #[test]
@@ -511,34 +514,12 @@ mod tests {
 
         store
             .remember(
-                "a/key",
-                "val1",
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
+                "a/key", "val1", None, None, None, None, None, None, None, None, None, None,
             )
             .unwrap();
         store
             .remember(
-                "b/key",
-                "val2",
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
+                "b/key", "val2", None, None, None, None, None, None, None, None, None, None,
             )
             .unwrap();
 
@@ -707,8 +688,14 @@ mod tests {
 
         let (exported, unresolved) = store.export_all().unwrap();
         assert_eq!(exported.len(), 1);
-        assert_eq!(exported[0].value, "secret-val", "export must include values");
-        assert!(unresolved.is_empty(), "vault-mode entries should not be unresolved");
+        assert_eq!(
+            exported[0].value, "secret-val",
+            "export must include values"
+        );
+        assert!(
+            unresolved.is_empty(),
+            "vault-mode entries should not be unresolved"
+        );
     }
 
     #[test]
@@ -718,10 +705,36 @@ mod tests {
         let store = CredentialStore::new(&db);
 
         store
-            .remember("svc/a", "val-a", None, Some("svc"), None, None, None, None, None, None, None, None)
+            .remember(
+                "svc/a",
+                "val-a",
+                None,
+                Some("svc"),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
             .unwrap();
         store
-            .remember("svc/b", "val-b", None, Some("svc"), None, None, None, None, None, None, None, None)
+            .remember(
+                "svc/b",
+                "val-b",
+                None,
+                Some("svc"),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
             .unwrap();
 
         // With values — vault-mode entries should have their values intact
@@ -769,8 +782,20 @@ mod tests {
             let store = CredentialStore::new(&db);
 
             let entry = store
-                .remember(path, "kc-secret", None, None, None, None, None, None,
-                    Some("keychain"), None, None, None)
+                .remember(
+                    path,
+                    "kc-secret",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some("keychain"),
+                    None,
+                    None,
+                    None,
+                )
                 .unwrap();
             assert_eq!(entry.value, "kc-secret");
 
@@ -780,7 +805,10 @@ mod tests {
 
             // DB should have empty placeholder
             let db_entry = db.get_entry(path).unwrap().unwrap();
-            assert!(db_entry.value.is_empty(), "DB should have empty placeholder for keychain mode");
+            assert!(
+                db_entry.value.is_empty(),
+                "DB should have empty placeholder for keychain mode"
+            );
             assert_eq!(db_entry.storage_mode, "keychain");
         });
     }
@@ -795,8 +823,20 @@ mod tests {
             let store = CredentialStore::new(&db);
 
             store
-                .remember(path, "both-secret", None, None, None, None, None, None,
-                    Some("both"), None, None, None)
+                .remember(
+                    path,
+                    "both-secret",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some("both"),
+                    None,
+                    None,
+                    None,
+                )
                 .unwrap();
 
             // recall() returns the value
@@ -825,13 +865,28 @@ mod tests {
         let store = CredentialStore::new(&db);
 
         // Insert via raw DB with storage_mode="keychain" but no keychain write
-        db.set_entry(path, "", None, None, None, None, None, None,
-            Some("keychain"), None, None, None)
-            .unwrap();
+        db.set_entry(
+            path,
+            "",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some("keychain"),
+            None,
+            None,
+            None,
+        )
+        .unwrap();
 
         // recall() should return Err because keychain entry is missing
         let result = store.recall(path);
-        assert!(result.is_err(), "recall should fail when keychain entry is missing");
+        assert!(
+            result.is_err(),
+            "recall should fail when keychain entry is missing"
+        );
     }
 
     #[test]
@@ -854,20 +909,45 @@ mod tests {
 
             // mix/a: vault mode (normal)
             store
-                .remember(paths[0], "val-a", None, None, None, None, None, None,
-                    None, None, None, None)
+                .remember(
+                    paths[0], "val-a", None, None, None, None, None, None, None, None, None, None,
+                )
                 .unwrap();
 
             // mix/b: keychain mode via store.remember (writes to keychain)
             store
-                .remember(paths[1], "val-b", None, None, None, None, None, None,
-                    Some("keychain"), None, None, None)
+                .remember(
+                    paths[1],
+                    "val-b",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some("keychain"),
+                    None,
+                    None,
+                    None,
+                )
                 .unwrap();
 
             // mix/c: keychain mode via raw DB only (no keychain write — simulates missing)
-            db.set_entry(paths[2], "", None, None, None, None, None, None,
-                Some("keychain"), None, None, None)
-                .unwrap();
+            db.set_entry(
+                paths[2],
+                "",
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                Some("keychain"),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
 
             let (entries, unresolved) = store
                 .recall_bundle("vault-core-test/cs/mix/", true)
@@ -896,8 +976,20 @@ mod tests {
             let store = CredentialStore::new(&db);
 
             store
-                .remember(path, "export-kc-val", None, None, None, None, None, None,
-                    Some("keychain"), None, None, None)
+                .remember(
+                    path,
+                    "export-kc-val",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some("keychain"),
+                    None,
+                    None,
+                    None,
+                )
                 .unwrap();
 
             let (exported, unresolved) = store.export_all().unwrap();
@@ -918,8 +1010,20 @@ mod tests {
             let store = CredentialStore::new(&db);
 
             store
-                .remember(path, "forget-me", None, None, None, None, None, None,
-                    Some("keychain"), None, None, None)
+                .remember(
+                    path,
+                    "forget-me",
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    Some("keychain"),
+                    None,
+                    None,
+                    None,
+                )
                 .unwrap();
 
             // Keychain should have the value

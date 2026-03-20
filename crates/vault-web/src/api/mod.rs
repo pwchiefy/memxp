@@ -746,10 +746,7 @@ pub async fn events_poll(
     let (credential_count, guide_count) = {
         let db = state.db.lock().unwrap();
         let store = vault_core::credential_store::CredentialStore::new(&db);
-        let creds = store
-            .list(None, None, None)
-            .map(|v| v.len())
-            .unwrap_or(0);
+        let creds = store.list(None, None, None).map(|v| v.len()).unwrap_or(0);
         let guides = db.list_guides(None, None).map(|v| v.len()).unwrap_or(0);
         (creds, guides)
     };

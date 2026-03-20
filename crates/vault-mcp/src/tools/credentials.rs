@@ -80,7 +80,10 @@ pub fn vault_session_start(
     let conflicts = conflict_queue.get_pending_conflicts().unwrap_or_default();
 
     // Rotation alerts via free function
-    let rotation_entries = state.credentials().list_rotation_candidates().unwrap_or_default();
+    let rotation_entries = state
+        .credentials()
+        .list_rotation_candidates()
+        .unwrap_or_default();
     let rotation_alerts = get_rotation_alerts(&rotation_entries, rotation_window_days, true);
 
     let result = serde_json::json!({
@@ -157,7 +160,10 @@ pub fn vault_smart_get(
 ) -> CallToolResult {
     // smart_get uses DB metadata for ranking (path, service, tags, notes — not value),
     // then resolves actual values only for the top matches via CredentialStore.
-    let entries = state.credentials().list(None, None, None).unwrap_or_default();
+    let entries = state
+        .credentials()
+        .list(None, None, None)
+        .unwrap_or_default();
     let security = security_config();
     let clipboard_clear_seconds = security.clipboard_clear_seconds as u64;
     let force_redact = security.redact_secrets_in_responses;

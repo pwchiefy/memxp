@@ -57,7 +57,10 @@ pub fn vault_changes(
 }
 
 pub fn vault_impact(state: &VaultState, app: &str) -> CallToolResult {
-    let entries = state.credentials().list(None, None, None).unwrap_or_default();
+    let entries = state
+        .credentials()
+        .list(None, None, None)
+        .unwrap_or_default();
 
     let affected: Vec<serde_json::Value> = entries
         .iter()
@@ -153,7 +156,10 @@ pub fn vault_rotation_alerts(
     window_days: i32,
     include_overdue: bool,
 ) -> CallToolResult {
-    let entries = state.credentials().list_rotation_candidates().unwrap_or_default();
+    let entries = state
+        .credentials()
+        .list_rotation_candidates()
+        .unwrap_or_default();
     let alerts = get_rotation_alerts(&entries, window_days, include_overdue);
 
     let result = serde_json::json!({

@@ -79,7 +79,7 @@ pub fn build_router(state: Arc<AppState>, static_dir: Option<&PathBuf>, port: u1
         .route("/auth/totp/verify", post(api::auth_totp_verify))
         .route("/auth/status", get(api::auth_status))
         .route("/auth/lock", post(api::auth_lock))
-        // Protected endpoints (require session_id query param)
+        // Protected endpoints (require vault_session cookie)
         .route("/credentials", get(api::credentials_list))
         .route("/credentials/{*path}", get(api::credentials_get))
         .route("/guides", get(api::guides_list).post(api::guide_create))

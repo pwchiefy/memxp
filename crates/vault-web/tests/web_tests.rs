@@ -68,7 +68,10 @@ async fn test_password_register_login() {
     assert_eq!(resp.status(), 200);
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(body["status"], "registered");
-    assert!(body.get("session_id").is_none(), "session_id must not appear in response body");
+    assert!(
+        body.get("session_id").is_none(),
+        "session_id must not appear in response body"
+    );
 
     // Login
     let resp = client
@@ -80,7 +83,10 @@ async fn test_password_register_login() {
     assert_eq!(resp.status(), 200);
     let body: serde_json::Value = resp.json().await.unwrap();
     assert_eq!(body["status"], "authenticated");
-    assert!(body.get("session_id").is_none(), "session_id must not appear in response body");
+    assert!(
+        body.get("session_id").is_none(),
+        "session_id must not appear in response body"
+    );
 }
 
 #[tokio::test]

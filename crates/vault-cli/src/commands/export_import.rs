@@ -98,7 +98,10 @@ pub fn import(file: &str) -> anyhow::Result<()> {
                 continue;
             }
 
-            let storage_mode = e.get("storage_mode").and_then(|v| v.as_str()).unwrap_or("vault");
+            let storage_mode = e
+                .get("storage_mode")
+                .and_then(|v| v.as_str())
+                .unwrap_or("vault");
             if storage_mode == "keychain" && value.is_empty() {
                 eprintln!(
                     "SKIP: {path} (keychain entry with empty value — would overwrite real secret)"

@@ -882,7 +882,11 @@ impl VaultMcpServer {
                 ));
             }
             let until = state.elevate_operator(p.ttl_seconds.unwrap_or(DEFAULT_OPERATOR_TTL_SECS));
-            let method = if p.password.is_some() { "password" } else { "startup_passphrase_auto" };
+            let method = if p.password.is_some() {
+                "password"
+            } else {
+                "startup_passphrase_auto"
+            };
             state.log_audit(
                 "vault_operator_mode",
                 None,

@@ -2860,7 +2860,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "vault-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2886,7 +2886,7 @@ dependencies = [
 
 [[package]]
 name = "vault-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "argon2",
  "chacha20poly1305",
@@ -2910,7 +2910,7 @@ dependencies = [
 
 [[package]]
 name = "vault-mcp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arboard",
  "chrono",
@@ -2929,7 +2929,7 @@ dependencies = [
 
 [[package]]
 name = "vault-sync"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2954,7 +2954,7 @@ dependencies = [
 
 [[package]]
 name = "vault-web"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arboard",
  "argon2",

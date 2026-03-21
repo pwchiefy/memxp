@@ -102,8 +102,8 @@ TARBALL="memxp-${PLATFORM}.tar.gz"
 
 # Include cr-sqlite if available
 CRSQLITE=""
-if [[ -f "$HOME/.vaultp2p/crsqlite.dylib" ]]; then
-  CRSQLITE="$HOME/.vaultp2p/crsqlite.dylib"
+if [[ -f "$HOME/.memxp/crsqlite.dylib" ]]; then
+  CRSQLITE="$HOME/.memxp/crsqlite.dylib"
 fi
 
 # Create tarball

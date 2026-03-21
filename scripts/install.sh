@@ -67,14 +67,7 @@ REPO_OWNER="pwchiefy"
 REPO_NAME="memxp"
 VERSION="${MEMXP_VERSION:-}"
 INSTALL_DIR="$HOME/.local/bin"
-# Prefer ~/.memxp for new installs; use existing ~/.vaultp2p if present
-if [ -d "$HOME/.memxp" ]; then
-  VAULT_DIR="$HOME/.memxp"
-elif [ -d "$HOME/.vaultp2p" ]; then
-  VAULT_DIR="$HOME/.vaultp2p"
-else
-  VAULT_DIR="$HOME/.memxp"
-fi
+VAULT_DIR="$HOME/.memxp"
 SKIP_CLAUDE=0
 AUTO_APPROVE=0
 

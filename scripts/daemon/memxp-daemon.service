@@ -5,7 +5,6 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-EnvironmentFile=-/root/.vaultp2p/env.systemd
 EnvironmentFile=-/root/.memxp/env.systemd
 ExecStart=/usr/local/bin/memxp-daemon-guard
 Restart=on-failure

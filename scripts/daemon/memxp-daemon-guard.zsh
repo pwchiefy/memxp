@@ -1,7 +1,7 @@
 #!/bin/zsh
 # memxp Daemon Guard (macOS / launchd)
 # Ensures exactly one daemon instance runs.
-# - Cleans stale PID files and legacy vaultp2p artifacts
+# - Cleans stale PID files
 # - Exits cleanly if daemon already running (prevents launchd restart loops)
 # - Monitors daemon and keeps wrapper alive for launchd lifecycle management
 # - Clean shutdown on SIGTERM
@@ -10,10 +10,8 @@ set -uo pipefail
 
 MEMXP="$HOME/.local/bin/memxp"
 PIDFILE="/private/tmp/memxp-daemon.pid"
-LEGACY_PIDFILE="/private/tmp/vaultp2p-daemon.pid"
 
 # Source passphrase (Keychain inaccessible from launchd)
-[[ -f "$HOME/.vaultp2p/env" ]] && source "$HOME/.vaultp2p/env"
 [[ -f "$HOME/.memxp/env" ]] && source "$HOME/.memxp/env"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] memxp-guard: $*"; }
@@ -30,9 +28,6 @@ if [[ -f "$PIDFILE" ]]; then
     fi
 fi
 
-# Clean legacy PID file
-rm -f "$LEGACY_PIDFILE"
-
 # --- Port check: make sure 5480 isn't already bound ---
 if lsof -i :5480 -sTCP:LISTEN >/dev/null 2>&1; then
     log "Port 5480 already in use by another process. Aborting."
@@ -40,22 +35,18 @@ if lsof -i :5480 -sTCP:LISTEN >/dev/null 2>&1; then
 fi
 
 # --- Log rotation: keep last 10 MB if log exceeds 50 MB ---
-for logdir in "$HOME/.vaultp2p/logs" "$HOME/.memxp/logs"; do
-    [[ -d "$logdir" ]] || continue
-    for logfile in "$logdir"/*.log; do
-        [[ -f "$logfile" ]] || continue
-        size=$(stat -f%z "$logfile" 2>/dev/null || echo 0)
-        if (( size > 52428800 )); then
-            tail -c 10485760 "$logfile" > "${logfile}.tmp" && mv "${logfile}.tmp" "$logfile"
-            log "Rotated $logfile (was $(( size / 1048576 )) MB)."
-        fi
-    done
+for logfile in "$HOME/.memxp/logs"/*.log; do
+    [[ -f "$logfile" ]] || continue
+    size=$(stat -f%z "$logfile" 2>/dev/null || echo 0)
+    if (( size > 52428800 )); then
+        tail -c 10485760 "$logfile" > "${logfile}.tmp" && mv "${logfile}.tmp" "$logfile"
+        log "Rotated $logfile (was $(( size / 1048576 )) MB)."
+    fi
 done
 
 # --- Start daemon ---
 INSECURE_TLS="false"  # secure by default; opt in via config
 CONFIG_FILE="$HOME/.memxp/config.yaml"
-[[ ! -f "$CONFIG_FILE" ]] && CONFIG_FILE="$HOME/.vaultp2p/config.yaml"
 if [[ -f "$CONFIG_FILE" ]]; then
     grep -q 'insecure_skip_tls_verify:\s*true' "$CONFIG_FILE" 2>/dev/null && INSECURE_TLS="true"
 fi

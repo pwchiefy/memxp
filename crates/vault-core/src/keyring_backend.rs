@@ -6,7 +6,6 @@
 use thiserror::Error;
 
 const SERVICE_NAME: &str = "com.memxp.credentials";
-const LEGACY_SERVICE_NAME: &str = "com.vaultp2p.credentials";
 
 #[derive(Debug, Error)]
 pub enum KeyringError {
@@ -26,23 +25,10 @@ pub fn set_in_keyring(path: &str, value: &str) -> Result<(), KeyringError> {
 }
 
 /// Get a value from the system keyring.
-///
-/// Tries the new service name first, then falls back to the legacy name
-/// for existing installations that haven't migrated.
 pub fn get_from_keyring(path: &str) -> Result<Option<String>, KeyringError> {
-    // Try new service name first
     let entry = keyring::Entry::new(SERVICE_NAME, path)
         .map_err(|e| KeyringError::Backend(e.to_string()))?;
     match entry.get_password() {
-        Ok(value) => return Ok(Some(value)),
-        Err(keyring::Error::NoEntry) => {}
-        Err(e) => return Err(KeyringError::Backend(e.to_string())),
-    }
-
-    // Fall back to legacy service name
-    let legacy = keyring::Entry::new(LEGACY_SERVICE_NAME, path)
-        .map_err(|e| KeyringError::Backend(e.to_string()))?;
-    match legacy.get_password() {
         Ok(value) => Ok(Some(value)),
         Err(keyring::Error::NoEntry) => Ok(None),
         Err(e) => Err(KeyringError::Backend(e.to_string())),

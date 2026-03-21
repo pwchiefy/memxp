@@ -7,8 +7,6 @@
 .env
 .env.*
 .memxp/
-.vaultp2p/
 *.pem
 *.key
-devdocsvp2prs/
 scripts/fleet.local.json

@@ -29,10 +29,10 @@
     <integer>30</integer>
 
     <key>StandardOutPath</key>
-    <string>__HOME__/.vaultp2p/logs/daemon-guard.log</string>
+    <string>__HOME__/.memxp/logs/daemon-guard.log</string>
 
     <key>StandardErrorPath</key>
-    <string>__HOME__/.vaultp2p/logs/daemon-guard.error.log</string>
+    <string>__HOME__/.memxp/logs/daemon-guard.error.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>

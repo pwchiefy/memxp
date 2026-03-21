@@ -157,7 +157,7 @@ impl rustls::client::danger::ServerCertVerifier for FingerprintVerifier {
     }
 }
 
-/// Return the TLS certificate/key directory (`~/.memxp/tls/` or `~/.vaultp2p/tls/`).
+/// Return the TLS certificate/key directory (`~/.memxp/tls/`).
 /// Creates the directory (mode 0o700 on Unix) if it does not exist.
 fn cert_dir() -> std::io::Result<std::path::PathBuf> {
     let dir = vault_core::config::vault_base_dir().join("tls");

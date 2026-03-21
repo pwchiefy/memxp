@@ -6,11 +6,8 @@ use std::time::{Duration, Instant};
 
 use crate::models::{DEFAULT_CLIPBOARD_CLEAR_SECONDS, DEFAULT_SYNC_INTERVAL, DEFAULT_SYNC_PORT};
 
-/// Base directory name for memxp data (new default).
+/// Base directory name for memxp data.
 const VAULT_DIR_NAME: &str = ".memxp";
-
-/// Legacy directory name — used as fallback for existing installations.
-const LEGACY_DIR_NAME: &str = ".vaultp2p";
 
 /// Cache TTL for machine ID lookups.
 const MACHINE_ID_TTL: Duration = Duration::from_secs(300);
@@ -18,23 +15,10 @@ const MACHINE_ID_TTL: Duration = Duration::from_secs(300);
 /// Cached machine ID with TTL.
 static MACHINE_ID_CACHE: Mutex<Option<(String, Instant)>> = Mutex::new(None);
 
-/// Get the base directory for memxp data.
-///
-/// Prefers `~/.memxp/` if it exists or if neither directory exists (fresh install).
-/// Falls back to `~/.vaultp2p/` for existing installations that haven't migrated.
+/// Get the base directory for memxp data (`~/.memxp/`).
 pub fn vault_base_dir() -> PathBuf {
     let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    let new_dir = home.join(VAULT_DIR_NAME);
-    let legacy_dir = home.join(LEGACY_DIR_NAME);
-
-    if new_dir.exists() {
-        new_dir
-    } else if legacy_dir.exists() {
-        legacy_dir
-    } else {
-        // Fresh install — use new name
-        new_dir
-    }
+    home.join(VAULT_DIR_NAME)
 }
 
 /// Get the default database path.
@@ -372,8 +356,8 @@ mod tests {
         let base = vault_base_dir();
         let base_str = base.to_string_lossy();
         assert!(
-            base_str.contains(VAULT_DIR_NAME) || base_str.contains(LEGACY_DIR_NAME),
-            "vault_base_dir should contain .memxp or .vaultp2p, got: {base_str}"
+            base_str.contains(VAULT_DIR_NAME),
+            "vault_base_dir should contain .memxp, got: {base_str}"
         );
 
         let db = db_path();

@@ -421,7 +421,7 @@ mod tests {
     fn test_db_with_crsqlite(tmp: &TempDir) -> Option<CrSqliteDatabase> {
         let ext = crate::config::cr_sqlite_extension_path();
         if !ext.exists() {
-            // Also check the common dev location (handles both ~/.memxp and ~/.vaultp2p)
+            // Also check the common dev location (~/.memxp)
             let alt = crate::config::vault_base_dir().join("crsqlite.dylib");
             if !alt.exists() {
                 return None;

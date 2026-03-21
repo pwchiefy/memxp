@@ -157,21 +157,10 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
   codesign --force --sign - "${TARGET}" 2>/dev/null || true
 fi
 
-# Create backward-compat symlink (vaultp2p -> memxp)
-LEGACY_LINK="${INSTALL_DIR}/vaultp2p"
-ln -sf "${TARGET}" "${LEGACY_LINK}" 2>/dev/null || true
-
 echo "installed to ${TARGET}"
 
-# Install cr-sqlite extension to active config directory
-# Mirror the binary's fallback logic: prefer ~/.memxp, fall back to ~/.vaultp2p
-if [[ -d "${HOME}/.memxp" ]]; then
-  VAULT_DIR="${HOME}/.memxp"
-elif [[ -d "${HOME}/.vaultp2p" ]]; then
-  VAULT_DIR="${HOME}/.vaultp2p"
-else
-  VAULT_DIR="${HOME}/.memxp"
-fi
+# Install cr-sqlite extension to config directory
+VAULT_DIR="${HOME}/.memxp"
 mkdir -p "${VAULT_DIR}"
 
 case "$(uname -s)" in

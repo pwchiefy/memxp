@@ -89,25 +89,10 @@ try {
 
     Copy-Item -Path $binary -Destination $target -Force
 
-    # Create backward-compat symlink (vaultp2p.exe -> memxp.exe)
-    $legacyLink = Join-Path $InstallDir "vaultp2p.exe"
-    if (-not (Test-Path $legacyLink)) {
-        try { New-Item -ItemType SymbolicLink -Path $legacyLink -Target $target -Force | Out-Null } catch {}
-    }
-
     Write-Host "installed to $target"
 
-    # Install cr-sqlite extension to active config directory
-    # Mirror the binary's fallback logic: prefer .memxp, fall back to .vaultp2p
-    $newDir = Join-Path $env:USERPROFILE ".memxp"
-    $legacyDir = Join-Path $env:USERPROFILE ".vaultp2p"
-    if (Test-Path $newDir) {
-        $vaultDir = $newDir
-    } elseif (Test-Path $legacyDir) {
-        $vaultDir = $legacyDir
-    } else {
-        $vaultDir = $newDir
-    }
+    # Install cr-sqlite extension to config directory
+    $vaultDir = Join-Path $env:USERPROFILE ".memxp"
     New-Item -ItemType Directory -Path $vaultDir -Force | Out-Null
     $crsqliteExt = Join-Path $extractDir "crsqlite.dll"
     if (Test-Path $crsqliteExt) {

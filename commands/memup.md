@@ -79,7 +79,7 @@ Report findings as a checklist:
 Source scan complete:
   Agent configs:
     ~/.claude/CLAUDE.md (187 lines) — import as guide?
-    ~/.cursor/rules/vaultp2p.mdc (42 lines) — import as guide?
+    ~/.cursor/rules/memxp.mdc (42 lines) — import as guide?
 
   Plaintext credentials found:
     ~/.zshrc: OPENAI_API_KEY, ANTHROPIC_API_KEY

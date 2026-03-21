@@ -12,6 +12,20 @@ As you build it out, you and your agent will start speaking the same language.
 
 ## Get Started
 
+### Choose Your Setup
+
+memxp supports a few different local trust postures. Pick the one that matches
+your experience level and how much friction you want.
+
+| Path | Best for | What it stores | Tradeoff |
+|------|----------|----------------|----------|
+| Quickstart | Most solo users | `~/.memxp/env`; if Claude integration is enabled, also `~/.mcp.json` | Lowest friction, but more local secret exposure |
+| Manual MCP | Users who want more control | `~/.memxp/env` unless you add agent config yourself | A little more setup, less automatic access |
+| Hardened local setup | Users who want tighter local boundaries | OS keychain and manual/session-token auth flows | More prompts, least automation |
+
+The guided installer below is the **Quickstart** path. It assumes the local
+agent process is trusted and optimizes for a smooth first experience.
+
 ### Step 1: Open Terminal
 
 On a Mac, press **Cmd + Space**, type **Terminal**, and hit Enter. You'll see a window with a blinking cursor. That's where you'll paste the commands below.
@@ -35,6 +49,14 @@ The installer will ask you a few questions and may ask for your Mac password (th
 > Click **Install** and wait for it to finish. The installer will continue automatically.
 
 When it's done, it will show you a passphrase. **Save this in a password manager** -- you'll need it if you set up memxp on another computer.
+
+> **What the guided installer stores:** It writes your vault passphrase to
+> `~/.memxp/env` so memxp and child processes can unlock the vault
+> non-interactively. If Claude Code integration is enabled, it also writes that
+> passphrase into the `memxp` MCP server entry in `~/.mcp.json` so Claude can
+> use memxp without prompting every session. Treat both files as sensitive local
+> secrets. If you want less on-disk secret exposure, use `--skip-claude` and
+> configure MCP manually.
 
 ### Step 3: Start your first session
 
@@ -476,6 +498,16 @@ Add to your MCP config (`~/.mcp.json` for Claude Code, or your agent's equivalen
 
 Your agent will automatically discover all 37 tools on startup.
 
+If you use the guided installer with Claude integration enabled, memxp will add
+the `memxp` MCP server for you and include `VAULT_PASSPHRASE` in that config so
+Claude can unlock the vault non-interactively. That is the convenience-first
+path.
+
+If you do **not** want the vault passphrase stored in your agent config, use
+`--skip-claude` during install and add the MCP server manually. That keeps the
+tradeoff in your hands: source `~/.memxp/env` yourself, rely on OS keychain, or
+require more explicit unlock/authentication flows.
+
 ### Example tool calls
 
 ```
@@ -524,6 +556,7 @@ vault_inject(path="npm/token", env_var="NPM_TOKEN")
 - Database encrypted with **SQLCipher** (AES-256-CBC, HMAC-SHA1 page-level authentication)
 - Encryption key derived from passphrase via SQLCipher's internal **PBKDF2-HMAC-SHA512** (256K iterations)
 - Passphrase stored in **OS keychain** (macOS Keychain, Windows Credential Manager, Linux Secret Service) or an env var
+- The guided Claude setup may also place `VAULT_PASSPHRASE` in `~/.mcp.json` so the local agent can unlock memxp non-interactively
 - On headless machines, passphrase loaded from `VAULT_PASSPHRASE` environment variable
 
 ### Encryption in Transit

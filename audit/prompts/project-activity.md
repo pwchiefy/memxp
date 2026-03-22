@@ -21,14 +21,16 @@ If the file doesn't exist or is empty, work from memxp data only.
 
 Also read any GitHub repos file at the same raw directory level (github-repos.txt) if it exists.
 
-Read the pre-collected guide list file (path in system prompt as GUIDE_LIST) if it exists.
-This contains the output of `memxp guide list` and lets you check which guides exist WITHOUT making individual MCP calls for each project.
+## MCP Tool Usage — Important
+
+- `find_instructions("<query>")` — **Discovery**: fuzzy keyword search. Good for exploring topics, NOT for checking if a specific guide exists.
+- `read_instructions("<exact-name>")` — **Existence check + content**: exact name lookup. Use this to verify a guide exists. Returns content + timestamps, or fails if not found.
 
 ### Step 3 — Verify each project
 
 For each project found in the MEMORY.md index:
-1. Check if its guide exists by searching the pre-collected guide list file (MUCH faster than individual MCP calls)
-2. Only use `find_instructions()` for a few key projects where you need the full guide content — don't call it for every project
+1. Check if its guide exists by calling `read_instructions("<guide-name>")` — this is an exact lookup, not fuzzy search
+2. If the guide exists, note its `updated_at` timestamp from the response
 3. Call `recent(limit=30)` ONCE and scan for vault activity related to all projects
 4. If git data was collected, check for recent commits to that project's repo
 5. Classify the project:

@@ -236,11 +236,16 @@ fi
 echo "===CRONTAB==="
 crontab -l 2>/dev/null || echo "no crontab"
 echo "===BACKUPS==="
-# Look for backup files in common locations
+# Look for backup files in common locations (recurse into subdirs)
 for dir in /var/backups /root/backups /opt/backups /backup; do
     if [ -d "$dir" ]; then
         echo "--- $dir ---"
-        ls -lt "$dir" 2>/dev/null | head -5
+        # Show directory structure
+        find "$dir" -maxdepth 3 -type d 2>/dev/null | head -20
+        # Show most recent backup files (sql, gz, gpg, tar)
+        echo "--- recent files ---"
+        find "$dir" -maxdepth 4 -type f \( -name "*.sql*" -o -name "*.gz" -o -name "*.gpg" -o -name "*.tar*" -o -name "manifest*" -o -name "*.log" \) -printf '%T+ %s %p\n' 2>/dev/null | sort -r | head -20 || \
+        find "$dir" -maxdepth 4 -type f \( -name "*.sql*" -o -name "*.gz" -o -name "*.gpg" -o -name "*.tar*" -o -name "manifest*" \) 2>/dev/null | xargs ls -lt 2>/dev/null | head -20
     fi
 done
 echo "===END==="

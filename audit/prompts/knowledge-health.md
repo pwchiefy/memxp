@@ -14,6 +14,9 @@ Call these MCP tools to understand the vault:
 
 Read the MEMORY.md file (path provided in system prompt) for the project and infrastructure index.
 
+Read the pre-collected guide list file (path provided in system prompt as GUIDE_LIST) if it exists.
+This contains the full output of `memxp guide list` — use it as the authoritative source for checking whether a guide exists. IMPORTANT: `find_instructions()` does fuzzy search and frequently returns false negatives. Always cross-check against the guide-list file before reporting a guide as missing.
+
 ### Step 2 — Assess guide freshness
 
 For each category of guides discovered:
@@ -26,9 +29,9 @@ For each category of guides discovered:
 
 Pick 10 guides that reference other guides or credential paths:
 - Read each guide
-- Check if referenced guides exist (`find_instructions` for each reference)
+- Check if referenced guides exist by searching the guide-list file (NOT `find_instructions` — it has false negatives)
 - Check if referenced credential paths exist (`find` for each path mentioned)
-- Check if MEMORY.md references guides that still exist in the vault
+- Check if MEMORY.md references guides that still exist — search the guide-list file for each guide name
 
 ### Step 4 — Check for contradictions
 

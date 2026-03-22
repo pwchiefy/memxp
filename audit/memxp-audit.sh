@@ -324,7 +324,7 @@ launch_agent() {
 # Core agents (always run — they only need memxp + local files)
 launch_agent "knowledge-health" \
     "$PROMPTS_DIR/knowledge-health.md" \
-    "MEMORY_FILE=${MEMORY_FILE:-not_configured}"
+    "MEMORY_FILE=${MEMORY_FILE:-not_configured} GUIDE_LIST=$RAW_DIR/guide-list.txt"
 
 launch_agent "meditation-patterns" \
     "$PROMPTS_DIR/meditation-patterns.md" \
